@@ -3,10 +3,12 @@ import { onBeforeUnmount, onMounted, ref } from 'vue';
 import { onFrameTime } from './anim';
 import { stats } from './live/store';
 
-// Dev-only readout (toggle with "p"; also enabled in a build by appending ?perf to the URL).
-const open = ref(false);
+// Readout: always available in dev; in a build it is enabled by ?perf (shown at once). "p" toggles.
+const startOpen = new URLSearchParams(location.search).has('perf');
+const open = ref(startOpen);
 const fps = ref(0);
 const avg = ref(0);
+const p50 = ref(0);
 const p95 = ref(0);
 const max = ref(0);
 const nodes = ref(0);
@@ -26,6 +28,7 @@ function sample(): void {
   const sum = frames.reduce((a, b) => a + b, 0);
   avg.value = sum / frames.length;
   fps.value = 1000 / avg.value;
+  p50.value = sorted[Math.floor(sorted.length * 0.5)];
   p95.value = sorted[Math.floor(sorted.length * 0.95)];
   max.value = sorted[sorted.length - 1];
   nodes.value = document.getElementsByTagName('*').length;
@@ -48,7 +51,7 @@ onMounted(() => {
   timer = window.setInterval(sample, 1000);
   // Exposed for scripted measurement (headless runs).
   (window as unknown as { __perf: () => unknown }).__perf = () => ({
-    fps: fps.value, avg: avg.value, p95: p95.value, max: max.value, nodes: nodes.value,
+    fps: fps.value, avg: avg.value, p50: p50.value, p95: p95.value, max: max.value, nodes: nodes.value,
     batchesPerS: batchesPerS.value, updatesPerS: updatesPerS.value,
   });
 });
@@ -60,9 +63,9 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div v-if="open" class="perf mono">
+  <div v-if="open" class="perf mono" aria-hidden="true">
     <div><b>{{ fps.toFixed(0) }}</b> fps &middot; {{ avg.toFixed(1) }} ms avg</div>
-    <div>p95 {{ p95.toFixed(1) }} ms &middot; max {{ max.toFixed(1) }} ms</div>
+    <div>p50 {{ p50.toFixed(1) }} ms &middot; p95 {{ p95.toFixed(1) }} ms &middot; max {{ max.toFixed(1) }} ms</div>
     <div>{{ nodes }} DOM nodes</div>
     <div>{{ batchesPerS }} batches/s &middot; {{ updatesPerS }} updates/s</div>
   </div>

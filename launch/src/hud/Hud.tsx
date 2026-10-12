@@ -5,6 +5,7 @@ import { TopBar } from './TopBar';
 import { LeftRail } from './LeftRail';
 import { BottomStrip } from './BottomStrip';
 import { CameraDock } from './CameraDock';
+import { PERF_ENABLED, PERF_START_OPEN } from './PerfProbe';
 
 /** HUD overlay: mission clock and status, go/no-go board, system strip, camera dock. Read-only except camera. */
 export function Hud() {
@@ -26,7 +27,7 @@ export function Hud() {
       <LeftRail />
       <CameraDock />
       <BottomStrip />
-      {import.meta.env.DEV && <pre id="perf" className="perf" />}
+      {PERF_ENABLED && <pre id="perf" className={PERF_START_OPEN ? 'perf on' : 'perf'} aria-hidden="true" />}
     </div>
   );
 }

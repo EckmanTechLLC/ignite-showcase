@@ -104,8 +104,13 @@ export function clockAge(): number {
 // must not replay the stage separation). Snapshots after a reconnect are real changes and keep their time.
 let firstSnapshotDone = false;
 
+/** Counters for the perf readout. */
+export const stats = { batches: 0, updates: 0 };
+
 function onBatch(batch: TagUpdate[], info: BatchInfo): void {
   const now = performance.now();
+  stats.batches++;
+  stats.updates += batch.length;
   const at = info.snapshot && !firstSnapshotDone ? -Infinity : now;
   if (info.snapshot) firstSnapshotDone = true;
   for (const u of batch) {
