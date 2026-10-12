@@ -62,12 +62,26 @@ export function LaunchMount() {
   }, []);
 
   const ring = useMemo(() => new THREE.TorusGeometry(7.4, 0.32, 10, 48), []);
+  // twelve deluge nozzles on the ring header, angled outward and up (the spray in WaterTower.tsx starts here)
+  const nozzles = useMemo(() => {
+    const parts: THREE.BufferGeometry[] = [];
+    for (let i = 0; i < 12; i++) {
+      const a = (i / 12) * Math.PI * 2;
+      const g = new THREE.CylinderGeometry(0.14, 0.24, 0.8, 8);
+      g.rotateZ(-0.95);
+      g.rotateY(-a);
+      g.translate(Math.cos(a) * 7.4, MOUNT_TOP + 0.6, Math.sin(a) * 7.4);
+      parts.push(g);
+    }
+    return merge(parts);
+  }, []);
 
   return (
     <group>
       <mesh geometry={table} material={M.concreteDark} castShadow receiveShadow />
       <mesh geometry={legs} material={M.steel} castShadow receiveShadow />
       <mesh geometry={clamps} material={M.steelDark} castShadow />
+      <mesh geometry={nozzles} material={M.steel} castShadow />
       <mesh geometry={ring} material={M.pipe} position={[0, MOUNT_TOP + 0.35, 0]} rotation={[Math.PI / 2, 0, 0]} castShadow />
       {/* hazard stripe ring */}
       <mesh position={[0, MOUNT_TOP + 0.015, 0]} rotation={[-Math.PI / 2, 0, 0]}>

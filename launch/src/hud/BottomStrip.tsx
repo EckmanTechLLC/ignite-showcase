@@ -43,7 +43,7 @@ function Propellant({ kind }: { kind: 'LOX' | 'CH4' }) {
       </h3>
       <div className="big">
         <b className="mono">{fmtNum(level, 1)}</b>
-        <i>%</i>
+        <i>{unitOf(`${p}/TankLevelPct` as const)}</i>
       </div>
       <Meter value={level} max={100} color={color} />
       <dl>
@@ -137,7 +137,7 @@ function Weather() {
       </h3>
       <div className="big">
         <b className="mono">{fmtNum(wind, 1)}</b>
-        <i>m/s</i>
+        <i>{unitOf('Launch/Weather/WindSpeedMS')}</i>
         <span className="compass" style={{ transform: `rotate(${dir + 180}deg)` }} title={`from ${Math.round(dir)} deg`} aria-hidden />
       </div>
       <Meter value={wind} max={16} color="#8fb6ff" warn={wind > 12} />

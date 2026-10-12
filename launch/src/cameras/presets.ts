@@ -52,9 +52,9 @@ export function resolveShot(id: PresetId, out: Shot): Shot {
       out.fov = 52;
       break;
     case 'tank':
-      out.pos.set(-58, 34, 44);
-      out.target.set(-150, 13, -4);
-      out.fov = 50;
+      out.pos.set(-34, 36, 8);
+      out.target.set(-150, 12, -1);
+      out.fov = 56;
       break;
     case 'trench':
       out.pos.set(7, 2.6, 121);
@@ -68,7 +68,7 @@ export function resolveShot(id: PresetId, out: Shot): Shot {
       break;
     case 'range': {
       const vy = follow.y;
-      out.pos.set(150, 78 + vy * 0.42, 350 + vy * 0.1);
+      out.pos.set(150, 78 + vy * 0.86, 350 + vy * 0.1);
       out.target.set(0, 58 + vy * 0.9, 0);
       out.fov = 44;
       break;
