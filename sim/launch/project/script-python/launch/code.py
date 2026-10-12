@@ -6,6 +6,7 @@
 BASE = "[default]Launch/"
 CONSOLES = ["Propellant", "GSE", "Range", "Weather", "Vehicle", "LaunchDirector"]
 SCENARIOS = ["nominal", "hold_t40s", "lox_leak_abort", "weather_scrub"]
+LIGHTNING_S = 60
 FAULTS = {"LOXLeak": "_Sim_/Fault/LOXLeak", "WeatherScrub": "_Sim_/Fault/WeatherScrub"}
 HOLDABLE = ["CHILLDOWN", "LOADING", "TERMINAL_COUNT"]
 ABORTABLE = ["CHILLDOWN", "LOADING", "HOLD", "TERMINAL_COUNT", "IGNITION"]
@@ -17,7 +18,7 @@ MAX_SPEED = 20.0
 
 _KEYS = [
 	"Clock/TMinusSeconds", "Clock/ClockRunning", "Clock/Phase", "Clock/HoldReason", "Clock/NextHoldAtSeconds",
-	"Clock/CycleCount",
+	"Clock/CycleCount", "Clock/RecycleRemainingS", "_Sim_/State/ScenarioClock",
 	"Clock/GoNoGo/Propellant", "Clock/GoNoGo/GSE", "Clock/GoNoGo/Range", "Clock/GoNoGo/Weather",
 	"Clock/GoNoGo/Vehicle", "Clock/GoNoGo/LaunchDirector",
 	"_Sim_/Enabled", "_Sim_/Scenario", "_Sim_/ScenarioStep", "_Sim_/SpeedFactor", "_Sim_/AutoCycle",
@@ -83,6 +84,7 @@ def _state(raw=None):
 		"hold_reason": r["Clock/HoldReason"],
 		"next_hold_at": r["Clock/NextHoldAtSeconds"],
 		"cycle": r["Clock/CycleCount"],
+		"recycle_remaining_s": r["Clock/RecycleRemainingS"],
 		"scenario": r["_Sim_/Scenario"],
 		"scenario_step": r["_Sim_/ScenarioStep"],
 		"speed": r["_Sim_/SpeedFactor"],
@@ -91,7 +93,8 @@ def _state(raw=None):
 		"start_t_minus": r["_Sim_/StartTMinus"],
 		"go": go,
 		"no_go": nogo,
-		"faults": {"LOXLeak": bool(r["_Sim_/Fault/LOXLeak"]), "WeatherScrub": bool(r["_Sim_/Fault/WeatherScrub"])},
+		"faults": {"LOXLeak": bool(r["_Sim_/Fault/LOXLeak"]), "WeatherScrub": bool(r["_Sim_/Fault/WeatherScrub"]),
+				   "Lightning": bool(r["_Sim_/State/ScenarioClock"] is not None and r["_Sim_/State/ScenarioClock"] < 0)},
 		"lox_level_pct": r["Propellant/LOX/TankLevelPct"],
 		"ch4_level_pct": r["Propellant/CH4/TankLevelPct"],
 		"lox_pressure_bar": r["Propellant/LOX/PressureBar"],
@@ -131,6 +134,11 @@ def start_count(t_minus=None):
 		st = _state()
 		if not st["enabled"]:
 			return _result(False, "simulation is disabled (_Sim_/Enabled is false)")
+		if st["phase"] == "RECYCLE":
+			left = st["recycle_remaining_s"]
+			if left is None:
+				left = 0
+			return _result(False, "recycle in progress, %d s (simulated) remain; the pad returns to IDLE after that" % left)
 		if st["phase"] != "IDLE":
 			return _result(False, "count already running (phase %s); recycle first" % st["phase"])
 		if st["command_pending"]:
@@ -265,10 +273,28 @@ def set_go(console, value):
 
 def inject_fault(name, on):
 	try:
-		if not isinstance(name, basestring) or str(name) not in FAULTS:
-			return _result(False, "fault must be one of: %s" % ", ".join(sorted(FAULTS.keys())))
+		names = sorted(FAULTS.keys() + ["Lightning"])
+		if not isinstance(name, basestring) or str(name) not in names:
+			return _result(False, "fault must be one of: %s" % ", ".join(names))
 		if not isinstance(on, bool):
 			return _result(False, "on must be true or false")
+		if str(name) == "Lightning":
+			# timed fault: the timer starts a LIGHTNING_S simulated-second countdown
+			st = _state()
+			if not st["enabled"]:
+				return _result(False, "simulation is disabled")
+			if st["command_pending"]:
+				return _result(False, "a command is still pending; try again in a second")
+			if on and st["scenario"] == "lox_leak_abort":
+				return _result(False, "Lightning cannot be injected during the lox_leak_abort scenario")
+			if on:
+				arg = "1"
+			else:
+				arg = "0"
+			_write([("_Sim_/Cmd/Arg", arg), ("_Sim_/Cmd/Pending", "LIGHTNING")])
+			if on:
+				return _result(True, "fault Lightning injected for %d simulated seconds" % LIGHTNING_S)
+			return _result(True, "fault Lightning cleared")
 		_write([(FAULTS[str(name)], on)])
 		return _result(True, "fault %s %s" % (name, "injected" if on else "cleared"))
 	except Exception as e:

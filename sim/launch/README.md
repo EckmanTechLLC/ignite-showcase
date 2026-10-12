@@ -24,8 +24,8 @@ speed. Random streams are `random.Random(Seed * 100003 + TickCount)` per tick: d
 | `LIFTOFF` / `ASCENT` | T0 to T+10 s / until SECO. Thrust, gravity, drag, throttle bucket through Max-Q, MECO at T+150 s, stage separation T+152 s, second stage burn T+155 s to SECO at T+480 s. |
 | `ORBIT` | After SECO, 20 s, then `SAFING`. |
 | `ABORT` | 60 s, vents open, fill stopped, deluge/strongback safed, then `SAFING`. |
-| `SAFING` | Offloads the tanks (0.8 %/s), at least 30 s. |
-| `RECYCLE` | Faults and scenario cleared, tanks warm up, vehicle reset (at least 30 s), then `IDLE`. |
+| `SAFING` | Detanks the ground tanks slowly (0.4 %/s, tapering to a 7 % heel), at least 30 s; also entered directly by a weather scrub. |
+| `RECYCLE` | Faults and scenario cleared, tanks warm up, vehicle reset; lasts exactly 60 simulated seconds (`Clock/RecycleRemainingS` counts 60 to 0), then `IDLE`; with `AutoCycle` the next count (`CHILLDOWN`) starts 30 s later. |
 
 `Clock/NextHoldAtSeconds` is the T-minus of the next built-in hold, `0` when none remain. Starting a count later
 than a hold's T-minus skips that hold (`start_count(-1200)` skips T-40:00).
@@ -40,7 +40,7 @@ than a hold's T-minus skips that hold (`start_count(-1200)` skips T-40:00).
 * Any console NO-GO for 3 s during `CHILLDOWN`/`LOADING`/`TERMINAL_COUNT` puts the count in a NO-GO hold if the
   clock is at or before T-0:10. Inside T-0:10 the autosequence cutoff has passed: a NO-GO there is an `ABORT`.
 * A NO-GO hold is resolved or escalated: a propellant NO-GO caused by a leak / low pressure that lasts 45 s becomes
-  an `ABORT`; a weather NO-GO lasting 90 s becomes a scrub (`RECYCLE`, tanks offloaded).
+  an `ABORT`; a weather NO-GO lasting 90 s becomes a scrub (`SAFING`, tanks detanked, then `RECYCLE`).
 * The `hold_t40s` scenario keeps the T-0:40 hold open until `launch.resume()` (auto-release after 600 s so an
   unattended sim cannot stall).
 * `launch.hold` is possible in `CHILLDOWN`/`LOADING`/`TERMINAL_COUNT` up to T-0:10; `launch.abort` in any pre-liftoff
@@ -53,9 +53,9 @@ than a hold's T-minus skips that hold (`start_count(-1200)` skips T-40:00).
 | `nominal` | Everything on schedule; weather inside limits. |
 | `hold_t40s` | The T-0:40 hold does not auto-release; waits for `launch.resume()`. |
 | `lox_leak_abort` | 15 s after loading is under way (LOX READY, level >= 20 %) `Fault/LOXLeak` turns on: 40 kg/s extra outflow, ullage pressure falls toward ambient, flame trench humidity proxy rises to ~95 %. LOX pressure crosses 1.8 bar -> `LowPressure` alarm and Propellant NO-GO -> automatic HOLD (next sequencer cutoff) -> `ABORT` after 45 s unresolved -> `SAFING` -> `RECYCLE`. |
-| `weather_scrub` | When `TERMINAL_COUNT` reaches T-5:00 `Fault/WeatherScrub` turns on and the wind climbs 0.08 m/s per s. Past 12 m/s: `HighWind` alarm, Weather NO-GO, HOLD, scrub after 90 s -> `RECYCLE`. |
+| `weather_scrub` | When `TERMINAL_COUNT` reaches T-5:00 `Fault/WeatherScrub` turns on and the wind climbs 0.08 m/s per s. Past 12 m/s: `HighWind` alarm, Weather NO-GO, HOLD. During the hold `LightningDistanceKm` moves to 6-9 km (`LightningProximity` alarm); scrub after 90 s -> `SAFING` (faults cleared, lightning recedes, alarm clears) -> `RECYCLE`. |
 
-A scenario is one-shot: entering `RECYCLE` clears `Fault/*` and resets `Scenario` to `nominal`. To play one from the
+A scenario is one-shot: a scrub (entering `SAFING`) or entering `RECYCLE` clears `Fault/*` and resets `Scenario` to `nominal`. To play one from the
 start of a count call `set_scenario` then `start_count(t_minus)`; with the default AutoCycle the fault appears
 once loading has begun (about T-37:00).
 
@@ -65,9 +65,15 @@ once loading has begun (about T-37:00).
   `k (T_ambient - T_sat) (0.25 + 0.75 level)`, leak. Ullage pressure integrates boil-off and fill compression, loses
   gas through the vent valve (opens at 3.0 bar, closes at 2.7 bar), seeps slowly to ambient; temperature follows the
   saturation temperature of the ullage pressure, so traces are correlated. Tanks idle at 1.5 bar nitrogen pad.
+  These are the *ground* tanks (tank farm): they follow loading, then **hold** their level through the count and the
+  whole flight (boil-off only, a few thousandths of a percent) - liftoff does not empty them. They only drain in
+  `ABORT` (after 15 s) and `SAFING`, at 0.4 % of capacity per second tapering to a 7 % heel, so the next cycle's
+  fill starts from the heel. A `RECYCLE` entered by command with the tanks still full snaps them to the heel at its end.
 * **Pad.** Strongback / umbilical sequence, deluge (45 000 L/min, water tower 800 000 L), GSE buses sag with load
   (pumps, chill circuit, deluge, strongback), flame trench heats with pad thrust and is cooled by the deluge.
-* **Weather.** Mean-reverting random walks (wind 5.5 m/s, gust spikes decaying over ~8 s, lightning 70 km, ...).
+* **Weather.** Mean-reverting random walks (wind 5.5 m/s, gust spikes decaying over ~8 s, lightning 70 km, ...). `LightningDistanceKm` leaves the 40-140 km band only for the lightning fault: it
+  closes to 6-9 km (inside the 10 km alarm and Weather NO-GO) for the `weather_scrub` hold or for 60 simulated
+  seconds after `inject_fault("Lightning", true)`, then recedes past the 40 km band floor within seconds and drifts back toward 70 km.
 * **Vehicle.** 502 t at T0, 7.2 MN stage 1 (3.8 g limit, throttle bucket 62-93 s), 1.0 MN stage 2, thrust direction from
   a pitch table, `g(h)`, centrifugal relief, exponential atmosphere drag. Approximate results: Max-Q ~62 s (~37 kPa),
   MECO T+150 s at ~69 km / 2.4 km/s, SECO T+480 s at ~210 km / 7.8 km/s, ~1500 km downrange.
@@ -78,13 +84,13 @@ once loading has begun (about T-37:00).
 ## Library API (`launch`, call with `POST /script/library {"project":"demo","path":"launch.<fn>","args":[...]}`)
 
 `status()` returns the state dict itself (phase, t_minus, t_minus_label, clock_running, hold_reason, next_hold_at,
-cycle, scenario, scenario_step, speed, enabled, auto_cycle, start_t_minus, go{}, no_go[], faults{}, levels, wind,
+cycle, recycle_remaining_s, scenario, scenario_step, speed, enabled, auto_cycle, start_t_minus, go{}, no_go[], faults{}, levels, wind,
 tick_count, last_error, command_pending, `can{}` = which commands are valid right now). Every other function
 returns `{ok, message, state}`; `ok:false` carries the reason and changes nothing.
 
 | Function | Effect |
 |---|---|
-| `start_count(t_minus=None)` | Phase must be `IDLE`; `t_minus` between -3600 and -30 (default `_Sim_/StartTMinus`). |
+| `start_count(t_minus=None)` | Phase must be `IDLE` (during `RECYCLE` the reply says how many simulated seconds remain); `t_minus` between -3600 and -30 (default `_Sim_/StartTMinus`). |
 | `resume()` | Phase `HOLD` and no console NO-GO. |
 | `hold(reason)` | `CHILLDOWN`/`LOADING`/`TERMINAL_COUNT` and clock at or before T-0:10. A manual hold only ends with `resume()`. |
 | `abort(reason)` | Any pre-liftoff counting phase. |
@@ -92,7 +98,7 @@ returns `{ok, message, state}`; `ok:false` carries the reason and changes nothin
 | `set_scenario(name)` | `nominal`, `hold_t40s`, `lox_leak_abort`, `weather_scrub`. |
 | `set_speed(factor)` | 0.25 to 20. |
 | `set_go(console, value)` | console in Propellant, GSE, Range, Weather, Vehicle, LaunchDirector; value true / false / null (auto). |
-| `inject_fault(name, on)` | `LOXLeak` or `WeatherScrub`, `on` true / false. |
+| `inject_fault(name, on)` | `LOXLeak`, `WeatherScrub`, or `Lightning`, `on` true / false. `Lightning` is timed: 60 simulated seconds, then clears itself (`on` false clears it early; not available during `lox_leak_abort`). Its countdown lives in `_Sim_/State/ScenarioClock` (negative = running), so no extra tag. |
 
 Commands only write `_Sim_/*` tags (`_Sim_/Cmd/Pending` + `Cmd/Arg` for the sequencer commands); the timer executes
 them on its next tick, so `state` in the reply is the state before the command is applied (`command_pending` is true).
@@ -127,7 +133,7 @@ Alarms are *manual-acknowledge*, so a cleared alarm stays in `/alarms/status` as
 Generated from `tags.json` by `node sim/scripts/tag-table.mjs sim/launch/tags.json --write sim/launch/README.md`.
 
 <!-- tag-table:start -->
-110 tags, 27 with history, 13 alarms.
+111 tags, 27 with history, 13 alarms.
 
 | Tag | Type | Unit | Initial | Alarms | History | Description |
 |---|---|---|---|---|---|---|
@@ -137,6 +143,7 @@ Generated from `tags.json` by `node sim/scripts/tag-table.mjs sim/launch/tags.js
 | Launch/Clock/HoldReason | String |  | "" |  |  | Why the count is held (or the abort reason); empty otherwise. |
 | Launch/Clock/NextHoldAtSeconds | Int4 | s | -2400 |  |  | T-minus of the next built-in hold still to come; 0 when none remain. |
 | Launch/Clock/CycleCount | Int4 | cycles | 0 |  |  | Number of countdowns started since the model was loaded. |
+| Launch/Clock/RecycleRemainingS | Int4 | s | 0 |  |  | Simulated seconds left in RECYCLE (counts down to 0, then IDLE); 0 in every other phase. |
 | Launch/Clock/GoNoGo/Propellant | Boolean |  | false |  |  | Go/No-Go poll result for the Propellant console (true = GO). Overridable through launch.set_go. |
 | Launch/Clock/GoNoGo/GSE | Boolean |  | false |  |  | Go/No-Go poll result for the GSE console (true = GO). Overridable through launch.set_go. |
 | Launch/Clock/GoNoGo/Range | Boolean |  | false |  |  | Go/No-Go poll result for the Range console (true = GO). Overridable through launch.set_go. |

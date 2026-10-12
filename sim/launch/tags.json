@@ -78,6 +78,15 @@
             "documentation": "Number of countdowns started since the model was loaded."
           },
           {
+            "name": "RecycleRemainingS",
+            "tagType": "AtomicTag",
+            "valueSource": "memory",
+            "dataType": "Int4",
+            "value": 0,
+            "engUnit": "s",
+            "documentation": "Simulated seconds left in RECYCLE (counts down to 0, then IDLE); 0 in every other phase."
+          },
+          {
             "name": "GoNoGo",
             "tagType": "Folder",
             "tags": [

@@ -16,6 +16,7 @@ def handleTimerEvent():
 		'Clock/HoldReason',
 		'Clock/NextHoldAtSeconds',
 		'Clock/CycleCount',
+		'Clock/RecycleRemainingS',
 		'Clock/GoNoGo/Propellant',
 		'Clock/GoNoGo/GSE',
 		'Clock/GoNoGo/Range',
@@ -129,6 +130,7 @@ def handleTimerEvent():
 		'Clock/HoldReason': '',
 		'Clock/NextHoldAtSeconds': -2400,
 		'Clock/CycleCount': 0,
+		'Clock/RecycleRemainingS': 0,
 		'Clock/GoNoGo/Propellant': False,
 		'Clock/GoNoGo/GSE': False,
 		'Clock/GoNoGo/Range': False,
@@ -255,7 +257,10 @@ def handleTimerEvent():
 	IDLE_DWELL = 30.0
 	ABORT_DWELL = 60.0
 	SAFING_MIN = 30.0
-	RECYCLE_MIN = 30.0
+	SAFING_MAX = 600.0       # detank is abandoned after this long (tank could not drain)
+	RECYCLE_S = 60.0         # RECYCLE lasts exactly this many sim s (<= 90), then IDLE
+	LIGHTNING_S = 60.0       # inject_fault("Lightning") duration, sim s
+	HEEL_PCT = 7.0           # ground tank level left after a deliberate detank (5-10 %)
 	ORBIT_DWELL = 20.0
 
 	TANKS = ["LOX", "CH4"]
@@ -273,7 +278,7 @@ def handleTimerEvent():
 	KLEAK = 0.02             # leak conductance (1/s)
 	GF = 0.00002             # bar per kg of fill flow (ullage compression)
 	LEAK_KGS = 40.0
-	OFFLOAD_PCT_S = 0.8
+	OFFLOAD_PCT_S = 0.4      # detank rate, percent of capacity per sim s (tapers to HEEL_PCT)
 	WATER_CAP_L = 800000.0
 	DELUGE_LPM = 45000.0
 
@@ -498,22 +503,23 @@ def handleTimerEvent():
 			S["_Sim_/ScenarioStep"] = 3
 
 
+	def enter_safing(S, reason):
+		# scrub / flight end: pad safed, ground tanks are detanked to HEEL_PCT before RECYCLE
+		S["Clock/ClockRunning"] = False
+		S["Clock/HoldReason"] = reason
+		S["_Sim_/State/HoldKind"] = ""
+		S["_Sim_/State/HoldIndex"] = -1
+		reset_vehicle(S)
+		S["Range/FTSArmed"] = False
+		clear_faults(S)
+		set_phase(S, "SAFING")
+
+
 	def enter_recycle(S, reason):
 		S["Clock/ClockRunning"] = False
 		S["Clock/HoldReason"] = reason
 		S["_Sim_/State/HoldKind"] = ""
 		S["_Sim_/State/HoldIndex"] = -1
-		if S["_Sim_/State/FlightTime"] > 0.0 or S["Vehicle/MECO"]:
-			# a vehicle was flown: fresh tanks for the next cycle
-			for k in TANKS:
-				b = "Propellant/%s/" % k
-				S[b + "TankLevelPct"] = 0.0
-				S[b + "FlowKgS"] = 0.0
-				S[b + "ChilldownState"] = "WARM"
-				S[b + "TempK"] = S["Weather/TempC"] + 273.15
-				S[b + "PressureBar"] = TK[k]["pad"]
-				S[b + "FillValveOpen"] = False
-				S[b + "VentValveOpen"] = False
 		reset_vehicle(S)
 		S["Range/FTSArmed"] = False
 		clear_faults(S)
@@ -552,6 +558,15 @@ def handleTimerEvent():
 		elif cmd == "RECYCLE":
 			if ph in ("HOLD", "ABORT", "SAFING", "ORBIT"):
 				enter_recycle(S, arg or "Operator recycle")
+		elif cmd == "LIGHTNING":
+			# the countdown lives in ScenarioClock: negative = lightning fault, sim s remaining
+			if arg == "1":
+				if S["_Sim_/Scenario"] != "lox_leak_abort":
+					S["_Sim_/State/ScenarioClock"] = -LIGHTNING_S
+					note(S, "fault: lightning for %d s" % int(LIGHTNING_S))
+			elif S["_Sim_/State/ScenarioClock"] < 0.0:
+				S["_Sim_/State/ScenarioClock"] = 0.0
+				note(S, "fault: lightning cleared")
 
 
 	def sync_scenario(S):
@@ -593,7 +608,17 @@ def handleTimerEvent():
 		temp = ou(S["Weather/TempC"], 22.0, 0.002, 0.03, h, rng)
 		hum = clamp(ou(S["Weather/HumidityPct"], 60.0, 0.004, 0.25, h, rng), 30.0, 95.0)
 		pres = ou(S["Weather/PressureHPa"], 1013.0, 0.001, 0.05, h, rng)
-		ltn = clamp(ou(S["Weather/LightningDistanceKm"], 70.0, 0.003, 0.8, h, rng), 40.0, 140.0)
+		ltn = S["Weather/LightningDistanceKm"]
+		strike = S["_Sim_/State/ScenarioClock"] < 0.0 or (scrub and S["Clock/Phase"] == "HOLD")
+		if S["_Sim_/State/ScenarioClock"] < 0.0:
+			S["_Sim_/State/ScenarioClock"] = min(S["_Sim_/State/ScenarioClock"] + h, 0.0)
+		if strike:
+			# a storm cell moves in: inside the 10 km alarm band, 6-9 km
+			ltn = max(lag(ltn, 7.5, h, 1.5) + 0.25 * math.sqrt(h) * rng.gauss(0.0, 1.0), 6.0)
+		elif ltn < 40.0:
+			ltn = lag(ltn, 70.0, h, 6.0)
+		else:
+			ltn = clamp(ou(ltn, 70.0, 0.003, 0.8, h, rng), 40.0, 140.0)
 		ceil_ = clamp(ou(S["Weather/CeilingM"], 3000.0, 0.002, 20.0, h, rng), 1800.0, 6000.0)
 		up = clamp(ou(S["Weather/UpperWindsMS"], 22.0, 0.003, 0.15, h, rng), 8.0, 38.0)
 		S["Weather/WindSpeedMS"] = w
@@ -715,9 +740,7 @@ def handleTimerEvent():
 				if "Propellant" in nogo and leak and ht >= LEAK_ABORT_AFTER:
 					enter_abort(S, "Propellant leak unresolved - abort")
 				elif "Weather" in nogo and ht >= SCRUB_AFTER:
-					enter_recycle(S, "Scrub - weather outside launch commit criteria")
-					if sc == "weather_scrub":
-						pass
+					enter_safing(S, "Scrub - weather outside launch commit criteria")
 			else:
 				S["_Sim_/State/GoStableTime"] += h
 				if S["_Sim_/State/GoStableTime"] >= GO_STABLE:
@@ -744,12 +767,18 @@ def handleTimerEvent():
 				set_phase(S, "SAFING")
 			return
 		if ph == "SAFING":
-			if pt >= SAFING_MIN and S["Propellant/LOX/TankLevelPct"] < 2.0 and S["Propellant/CH4/TankLevelPct"] < 2.0:
-				enter_recycle(S, "")
+			drained = (S["Propellant/LOX/TankLevelPct"] <= HEEL_PCT + 0.5 and S["Propellant/CH4/TankLevelPct"] <= HEEL_PCT + 0.5)
+			if pt >= SAFING_MIN and (drained or pt >= SAFING_MAX):
+				enter_recycle(S, S["Clock/HoldReason"])
 			return
 		if ph == "RECYCLE":
-			if (pt >= RECYCLE_MIN and S["Propellant/LOX/TankLevelPct"] < 1.5 and S["Propellant/CH4/TankLevelPct"] < 1.5
-					and S["Propellant/LOX/ChilldownState"] == "WARM" and S["Propellant/CH4/ChilldownState"] == "WARM"):
+			if pt >= RECYCLE_S:
+				for k in TANKS:
+					b = "Propellant/%s/" % k
+					if S[b + "TankLevelPct"] > HEEL_PCT:
+						S[b + "TankLevelPct"] = HEEL_PCT
+					S[b + "FlowKgS"] = 0.0
+					S[b + "FillValveOpen"] = False
 				S["Clock/HoldReason"] = ""
 				S["Pad/PadClear"] = False
 				S["_Sim_/State/TMinusExact"] = float(S["_Sim_/StartTMinus"])
@@ -812,18 +841,6 @@ def handleTimerEvent():
 		flow = S[b + "FlowKgS"]
 		pamb = S["Weather/PressureHPa"] / 1000.0
 		tamb = S["Weather/TempC"] + 273.15
-		if ph in FLIGHT or (ph == "SAFING" and S["_Sim_/State/FlightTime"] > 0.0):
-			# vehicle tank in flight: level follows propellant burned, everything else frozen
-			S[b + "FlowKgS"] = 0.0
-			S[b + "FillValveOpen"] = False
-			S[b + "VentValveOpen"] = False
-			S[b + "BoiloffKgS"] = 0.0
-			if S["Vehicle/StageSep"]:
-				S[b + "TankLevelPct"] = 0.0
-			elif S["_Sim_/State/MassKg"] > 0.0:
-				used = clamp(M0 - S["_Sim_/State/MassKg"], 0.0, S1_PROP)
-				S[b + "TankLevelPct"] = 100.0 - 99.5 * used / S1_PROP
-			return
 		ts = tsat(k, P)
 		# --- thermal state
 		if chill_cmd:
@@ -836,7 +853,7 @@ def handleTimerEvent():
 			else:
 				Tt = lag(Tt, ts + 0.4, h, 20.0)
 		else:
-			if cs == "READY" and lvl > 1.0:
+			if cs == "READY" and lvl > 1.0 and ph != "RECYCLE":
 				Tt = lag(Tt, ts + 0.4, h, 20.0)
 			else:
 				Tt = lag(Tt, tamb, h, 60.0)
@@ -861,9 +878,9 @@ def handleTimerEvent():
 				fill_open = True
 			if fill_open:
 				flow_set = p["fmax"] * clamp((100.0 - lvl) / TAPER, 0.0, 1.0)
-		elif drain_cmd and lvl > 0.3:
+		elif drain_cmd and lvl > HEEL_PCT + 0.05:
 			fill_open = True
-			flow_set = -OFFLOAD_PCT_S / 100.0 * p["cap"]
+			flow_set = -OFFLOAD_PCT_S / 100.0 * p["cap"] * clamp((lvl - HEEL_PCT) / 4.0, 0.05, 1.0)
 		else:
 			fill_open = False
 		flow = lag(flow, flow_set, h, 10.0 if flow_set >= 0.0 else 4.0)
@@ -877,8 +894,7 @@ def handleTimerEvent():
 			if S["_Sim_/Fault/LOXLeak"] and k == "LOX" and lvl > 0.5:
 				m -= LEAK_KGS * h
 		lvl = clamp(m / p["cap"] * 100.0, 0.0, 100.0)
-		if drain_cmd and lvl <= 0.3:
-			lvl = 0.0
+		if drain_cmd and lvl <= HEEL_PCT + 0.05:
 			flow = 0.0
 		# --- ullage pressure
 		vent = S[b + "VentValveOpen"]
@@ -916,7 +932,7 @@ def handleTimerEvent():
 		ph = S["Clock/Phase"]
 		chill_cmd = ph in ACTIVE and not (ph == "HOLD" and S["_Sim_/State/HoldIndex"] == 0)
 		fill_cmd = ph in ACTIVE
-		drain_cmd = ph in ("SAFING", "RECYCLE") or (ph == "ABORT" and S["_Sim_/State/PhaseTime"] > 15.0)
+		drain_cmd = ph == "SAFING" or (ph == "ABORT" and S["_Sim_/State/PhaseTime"] > 15.0)
 		for k in TANKS:
 			tank(S, h, rng, k, chill_cmd, fill_cmd, drain_cmd, ph)
 
@@ -1179,6 +1195,10 @@ def handleTimerEvent():
 		go_nogo(S)
 		S["Clock/TMinusSeconds"] = int(S["_Sim_/State/TMinusExact"])
 		S["Clock/NextHoldAtSeconds"] = next_hold(S)
+		left = 0
+		if S["Clock/Phase"] == "RECYCLE":
+			left = int(math.ceil(max(RECYCLE_S - S["_Sim_/State/PhaseTime"], 0.0)))
+		S["Clock/RecycleRemainingS"] = left
 
 
 	def advance(S, dt, rng):
