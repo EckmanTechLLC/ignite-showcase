@@ -4,7 +4,10 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "gen": "node scripts/gen-paths.mjs",
+    "predev": "node scripts/gen-paths.mjs",
     "dev": "vite",
+    "prebuild": "node scripts/gen-paths.mjs",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview"
   },
@@ -13,7 +16,9 @@
     "@ignite/theme": "*",
     "@react-three/drei": "9.122.0",
     "@react-three/fiber": "8.18.0",
+    "@react-three/postprocessing": "2.19.1",
     "echarts": "6.1.0",
+    "postprocessing": "6.39.5",
     "react": "18.3.1",
     "react-dom": "18.3.1",
     "three": "0.186.1"

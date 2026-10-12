@@ -1,17 +1,24 @@
-import { Hud } from './Hud';
+import { useEffect } from 'react';
+import { Hud } from './hud/Hud';
 import { Scene } from './Scene';
-import { useTag } from './useTag';
-
-const TAG = '[default]MyTag/Value';
+import { __seed, startLive } from './live/store';
 
 export function App() {
-  const { ref, value, state, env } = useTag(TAG);
+  useEffect(() => {
+    if (import.meta.env.DEV) {
+      // Dev only: ?live=0 skips the gateway and window.__seed({...}) sets tag values by hand, which makes
+      // every scene state reproducible without waiting for the sequencer.
+      (window as unknown as { __seed: typeof __seed }).__seed = __seed;
+      if (new URLSearchParams(window.location.search).get('live') === '0') return;
+    }
+    startLive();
+  }, []);
   return (
     <>
       <div className="stage">
-        <Scene live={ref} />
+        <Scene />
       </div>
-      <Hud gatewayUrl={env.gatewayUrl} site={env.site} state={state} path={TAG} value={value} />
+      <Hud />
     </>
   );
 }
