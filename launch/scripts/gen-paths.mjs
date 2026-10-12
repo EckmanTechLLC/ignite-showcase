@@ -16,7 +16,7 @@ const walk = (node, prefix) => {
   if (node.tagType === 'Folder' || Array.isArray(node.tags)) {
     for (const child of node.tags ?? []) walk(child, path);
   } else {
-    leaves.push({ name: path, unit: node.engUnit ?? '', type: node.dataType ?? '' });
+    leaves.push({ name: path, unit: node.engUnit ?? '', type: node.dataType ?? '', trended: node.historyEnabled === true });
   }
 };
 for (const root of model) walk(root, '');
@@ -62,4 +62,15 @@ ${types}
 };
 `,
 );
-console.log(`gen-paths: ${leaves.length} tags -> src/live/paths.ts, units.ts`);
+const trended = leaves.filter((l) => l.trended && l.type !== 'Boolean' && l.type !== 'String');
+writeFileSync(
+  join(outDir, 'trended.ts'),
+  `${header}import type { TagName } from './paths';
+
+/** Numeric tags with history enabled in the tag model (${trended.length}): the telemetry channel picker. */
+export const TRENDED: TagName[] = [
+${trended.map((l) => `  '${l.name}',`).join('\n')}
+];
+`,
+);
+console.log(`gen-paths: ${leaves.length} tags -> src/live/paths.ts, units.ts, trended.ts`);

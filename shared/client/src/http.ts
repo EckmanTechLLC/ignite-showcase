@@ -8,6 +8,8 @@ export class HttpError extends Error {
   constructor(
     readonly status: number,
     readonly body: string,
+    /** Seconds from a Retry-After header (429 lockout), when present. */
+    readonly retryAfter?: number,
   ) {
     super(`HTTP ${status}: ${body || 'request failed'}`);
     this.name = 'HttpError';
@@ -94,7 +96,8 @@ async function request<T>(url: string, init: RequestInit): Promise<T> {
       emitUnauthorized();
     }
     const text = await res.text().catch(() => '');
-    throw new HttpError(res.status, text || res.statusText);
+    const ra = Number(res.headers.get('Retry-After'));
+    throw new HttpError(res.status, text || res.statusText, Number.isFinite(ra) && ra > 0 ? ra : undefined);
   }
   return (await res.json()) as T;
 }

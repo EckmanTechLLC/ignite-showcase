@@ -34,6 +34,8 @@ export default defineConfig(({ command, mode }) => {
           // Long-lived vendor chunks: the three.js core, and the React-Three wrappers + post-processing.
           codeSplitting: {
             groups: [
+              // ECharts is only imported by the lazy telemetry panel, so this chunk loads on first open.
+              { name: 'echarts', test: /node_modules[\\/](echarts|zrender)[\\/]/, priority: 20 },
               { name: 'three', test: /node_modules[\\/]three[\\/]/, priority: 20 },
               {
                 name: 'r3f',

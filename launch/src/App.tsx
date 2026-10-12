@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { Hud } from './hud/Hud';
+import { OverlayHost } from './overlays/OverlayHost';
 import { Scene } from './Scene';
 import { __seed, startLive } from './live/store';
 
@@ -19,6 +20,7 @@ export function App() {
         <Scene />
       </div>
       <Hud />
+      <OverlayHost />
     </>
   );
 }

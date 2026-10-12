@@ -145,3 +145,10 @@ describe('wrappers', () => {
     expect(getToken()).toBeNull();
   });
 });
+
+describe('HttpError', () => {
+  it('carries Retry-After seconds on a 429', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response('{}', { status: 429, headers: { 'Retry-After': '300' } })));
+    await expect(login('u', 'p')).rejects.toMatchObject({ status: 429, retryAfter: 300 });
+  });
+});
