@@ -3,7 +3,7 @@
 /** Provider prefix of every gateway path. */
 export const PROVIDER = '[default]';
 
-/** Tag names relative to the provider, e.g. 'Launch/Clock/Phase'. 110 leaf tags. */
+/** Tag names relative to the provider, e.g. 'Launch/Clock/Phase'. 111 leaf tags. */
 export const TAG_NAMES = [
   'Launch/Clock/TMinusSeconds',
   'Launch/Clock/ClockRunning',
@@ -11,6 +11,7 @@ export const TAG_NAMES = [
   'Launch/Clock/HoldReason',
   'Launch/Clock/NextHoldAtSeconds',
   'Launch/Clock/CycleCount',
+  'Launch/Clock/RecycleRemainingS',
   'Launch/Clock/GoNoGo/Propellant',
   'Launch/Clock/GoNoGo/GSE',
   'Launch/Clock/GoNoGo/Range',
@@ -122,4 +123,4 @@ export type TagName = (typeof TAG_NAMES)[number];
 /** Full gateway paths, e.g. '[default]Launch/Clock/Phase'. */
 export const TAG_PATHS: string[] = TAG_NAMES.map((n) => PROVIDER + n);
 
-export const TAG_COUNT = 110;
+export const TAG_COUNT = 111;
