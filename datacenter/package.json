@@ -12,6 +12,7 @@
   "dependencies": {
     "@ignite/client": "*",
     "@ignite/theme": "*",
+    "echarts": "6.1.0",
     "vue": "3.5.43"
   },
   "devDependencies": {

@@ -3,6 +3,8 @@ import { computed } from 'vue';
 import PueGauge from './PueGauge.vue';
 import { heatColor } from '../heat';
 import { num } from '../fmt';
+import { hasCritical } from '../overlays/alarms/store';
+import { panel } from '../overlays/ui';
 import { chunkStates, connection, dataAgeS, openChunks } from '../live/store';
 import { useTagNumber, useTagString } from '../live/store';
 
@@ -85,11 +87,11 @@ const age = computed(() => (Number.isFinite(dataAgeS.value) ? (dataAgeS.value < 
       <div class="v"><i class="swatch" :style="{ background: heatColor(maxIn) }" />{{ num(maxIn, 1) }}<span class="u"> &deg;C</span></div>
       <div class="s">avg {{ num(avgIn, 1) }} &deg;C</div>
     </div>
-    <div class="tile">
+    <button class="tile alarms" :class="{ crit: hasCritical }" title="Alarm board (A)" @click="panel = panel === 'alarms' ? null : 'alarms'">
       <div class="k">ALARMS</div>
       <div class="v" :class="{ hot: alarms > 0 }">{{ num(alarms, 0) }}</div>
-      <div class="s">active</div>
-    </div>
+      <div class="s">{{ hasCritical ? 'CRITICAL' : 'active' }}</div>
+    </button>
 
     <div class="spacer" />
 
@@ -133,6 +135,8 @@ const age = computed(() => (Number.isFinite(dataAgeS.value) ? (dataAgeS.value < 
 .title { color: var(--accent); font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; font-size: var(--text-md); line-height: 1.1; }
 .sub { color: var(--fg-2); font-size: var(--text-xs); letter-spacing: 0.04em; }
 .tile { display: flex; flex-direction: column; justify-content: center; gap: 2px; min-width: 96px; }
+.tile.alarms { background: none; border: 0; padding: 0; font: inherit; text-align: left; cursor: pointer; min-width: 80px; }
+.tile.alarms.crit .v, .tile.alarms.crit .s { color: var(--alarm); animation: pulse 1s ease-in-out infinite; font-weight: 700; }
 .k { color: var(--fg-2); font-size: var(--text-xs); letter-spacing: 0.1em; }
 .k .thr { color: var(--alarm); margin-left: 4px; letter-spacing: 0.04em; }
 .v { color: var(--fg-0); font-size: var(--text-xl); font-weight: 600; line-height: 1.05; white-space: nowrap; }

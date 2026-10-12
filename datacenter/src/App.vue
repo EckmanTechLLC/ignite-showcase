@@ -4,6 +4,7 @@ import Hud from './hud/Hud.vue';
 import Scene from './Scene.vue';
 import Tooltip from './Tooltip.vue';
 import PerfReadout from './PerfReadout.vue';
+import Overlays from './overlays/Overlays.vue';
 import { startLive, stopLive } from './live/store';
 
 const legend = ref(true);
@@ -15,5 +16,6 @@ onBeforeUnmount(stopLive);
   <Hud v-model:legend="legend" />
   <main class="stage"><Scene :legend="legend" /></main>
   <Tooltip />
+  <Overlays />
   <PerfReadout />
 </template>
