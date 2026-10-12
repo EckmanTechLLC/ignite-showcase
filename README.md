@@ -14,6 +14,8 @@ Each demo is a single full-viewport control-room screen on a different front-end
 | `datacenter/` | Demo 2 — Data Center: Vue 3, Vite, animated SVG |
 | `scripts/deploy.mjs` | Builds every demo and commits the output to the `deploy` branch |
 | `docs/ASSETS.md` | Every bundled third-party asset and its licence |
+| `docs/perf.md` | Measured performance, Lighthouse scores and what was changed because of them |
+| `docs/screenshots/` | Three screenshots per demo (used by the demo READMEs) |
 
 `main` holds source only. The `deploy` branch holds built output only (`launch/`, `datacenter/`); gateway site records point at it with `servePath=launch` / `servePath=datacenter`.
 

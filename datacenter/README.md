@@ -12,7 +12,22 @@ gateway injects `window.__IGNITE_ENV__` (gateway URL, site, read key, and `IGNIT
 | `A` | Alarms | `/alarms/status` every 3 s (paused while the tab is hidden); grouped by source (racks by row, UPS, PDU, CRAH, Hall); filters Active / Needs ack / All; per-row, per-group and all-visible acknowledge; storm timeline (first High, first Critical, all clear) and a 15 min active-count sparkline from the board's own samples. The HUD ALARMS tile pulses on Critical. |
 | `T` | Trends | PUE (1.6 line), IT and facility kW, hall max/avg inlet, UPS A/B load; windows 15 min / 1 h / 24 h from history, then live append from the store; redraw at most 2 Hz. Clicking a rack, CRAH, UPS or PDU opens a "Selected" chart (rack inlet + kW, CRAH supply/return/fan, UPS load + SOC, PDU load). ECharts is a lazy chunk. |
 | `C` | Controls | Utility loss/restore, fail/restore CRAH 1-4, start migration, workload profile, restore all (confirm); Director: speed 0.5/1/2/4 and raw scenario set. Mode, scenario and speed chips live in the header; each action toasts the library message and refreshes `dc.status()`. |
-| `L` | Identity | Login, session tier chip, logout, audit view (Director). `Esc` closes a panel, `p` toggles the perf readout. |
+| `L` | Identity | Login, session tier chip, logout, audit view (Director). |
+| `?` | Help | Shortcuts and the Ignite routes this page uses (`?about` in the URL opens it at load). |
+
+`Esc` closes a panel or the selection. `?perf` in the URL shows the performance readout (always available in dev); `p` toggles it.
+
+## Screenshots
+
+Headless Chrome, 1920x1080, live data.
+
+![Hall overview](../docs/screenshots/datacenter-hall.png)
+![Alarm board](../docs/screenshots/datacenter-alarms.png)
+![Trends with a rack selected](../docs/screenshots/datacenter-trends.png)
+
+## Performance
+
+`?perf` readout: fps, frame time p50/p95/max, DOM nodes, SSE batches/s. Measurements: [`docs/perf.md`](../docs/perf.md).
 
 ## Tiers
 

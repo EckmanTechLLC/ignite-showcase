@@ -11,7 +11,21 @@ React 18 + Vite + React Three Fiber scene over live Ignition data, with overlays
 | `A` | Alarm board (the HUD badge pulses while a Critical alarm is active) |
 | `C` | Sequencer and Director controls |
 | `L` | Login, session, audit ticker |
+| `?` | Help and about panel (`?about` in the URL opens it at load): shortcuts and the Ignite routes this page uses |
 | `Esc` | Close all panels |
+| `P` | Performance readout, once enabled with `?perf` in the URL (always available in dev) |
+
+## Screenshots
+
+Headless Chrome, 1920x1080, live data (software-rendered, so only the look is representative).
+
+![Launch pad overview](../docs/screenshots/launch-pad.png)
+![Tower camera with the telemetry panel](../docs/screenshots/launch-tower-telemetry.png)
+![Range camera with the alarm board](../docs/screenshots/launch-range-alarms.png)
+
+## Performance
+
+`?perf` shows a readout (fps, frame time p50/p95/max, JS ms per frame, draw calls, triangles, SSE batches/s, render scale); `P` toggles it. Measurements and targets: [`docs/perf.md`](../docs/perf.md).
 
 ## Auth tiers
 
