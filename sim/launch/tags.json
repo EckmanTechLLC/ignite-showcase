@@ -1,0 +1,1441 @@
+[
+  {
+    "name": "Launch",
+    "tagType": "Folder",
+    "tags": [
+      {
+        "name": "Clock",
+        "tagType": "Folder",
+        "tags": [
+          {
+            "name": "TMinusSeconds",
+            "tagType": "AtomicTag",
+            "valueSource": "memory",
+            "dataType": "Int4",
+            "value": -2400,
+            "engUnit": "s",
+            "documentation": "Countdown clock, negative before T0, positive after. Frozen during holds.",
+            "historyEnabled": true,
+            "historyProvider": "IgniteHistorian",
+            "historySampleMode": "OnChange",
+            "historyMinTime": 1,
+            "historyMinTimeUnits": "SEC",
+            "historyMaxTime": 60,
+            "historyMaxTimeUnits": "SEC"
+          },
+          {
+            "name": "ClockRunning",
+            "tagType": "AtomicTag",
+            "valueSource": "memory",
+            "dataType": "Boolean",
+            "value": false,
+            "documentation": "True while the count is advancing (false in holds, ABORT, IDLE)."
+          },
+          {
+            "name": "Phase",
+            "tagType": "AtomicTag",
+            "valueSource": "memory",
+            "dataType": "String",
+            "value": "IDLE",
+            "documentation": "Sequencer phase: IDLE|CHILLDOWN|LOADING|HOLD|TERMINAL_COUNT|IGNITION|LIFTOFF|ASCENT|ORBIT|ABORT|SAFING|RECYCLE.",
+            "alarms": [
+              {
+                "name": "Abort",
+                "mode": "OnCondition",
+                "priority": "Critical",
+                "label": "Launch abort",
+                "activeCondition": {
+                  "bindType": "Expression",
+                  "value": "{[.]Phase} = \"ABORT\""
+                }
+              }
+            ]
+          },
+          {
+            "name": "HoldReason",
+            "tagType": "AtomicTag",
+            "valueSource": "memory",
+            "dataType": "String",
+            "value": "",
+            "documentation": "Why the count is held (or the abort reason); empty otherwise."
+          },
+          {
+            "name": "NextHoldAtSeconds",
+            "tagType": "AtomicTag",
+            "valueSource": "memory",
+            "dataType": "Int4",
+            "value": -2400,
+            "engUnit": "s",
+            "documentation": "T-minus of the next built-in hold still to come; 0 when none remain."
+          },
+          {
+            "name": "CycleCount",
+            "tagType": "AtomicTag",
+            "valueSource": "memory",
+            "dataType": "Int4",
+            "value": 0,
+            "engUnit": "cycles",
+            "documentation": "Number of countdowns started since the model was loaded."
+          },
+          {
+            "name": "GoNoGo",
+            "tagType": "Folder",
+            "tags": [
+              {
+                "name": "Propellant",
+                "tagType": "AtomicTag",
+                "valueSource": "memory",
+                "dataType": "Boolean",
+                "value": false,
+                "documentation": "Go/No-Go poll result for the Propellant console (true = GO). Overridable through launch.set_go."
+              },
+              {
+                "name": "GSE",
+                "tagType": "AtomicTag",
+                "valueSource": "memory",
+                "dataType": "Boolean",
+                "value": false,
+                "documentation": "Go/No-Go poll result for the GSE console (true = GO). Overridable through launch.set_go."
+              },
+              {
+                "name": "Range",
+                "tagType": "AtomicTag",
+                "valueSource": "memory",
+                "dataType": "Boolean",
+                "value": false,
+                "documentation": "Go/No-Go poll result for the Range console (true = GO). Overridable through launch.set_go."
+              },
+              {
+                "name": "Weather",
+                "tagType": "AtomicTag",
+                "valueSource": "memory",
+                "dataType": "Boolean",
+                "value": false,
+                "documentation": "Go/No-Go poll result for the Weather console (true = GO). Overridable through launch.set_go."
+              },
+              {
+                "name": "Vehicle",
+                "tagType": "AtomicTag",
+                "valueSource": "memory",
+                "dataType": "Boolean",
+                "value": false,
+                "documentation": "Go/No-Go poll result for the Vehicle console (true = GO). Overridable through launch.set_go."
+              },
+              {
+                "name": "LaunchDirector",
+                "tagType": "AtomicTag",
+                "valueSource": "memory",
+                "dataType": "Boolean",
+                "value": false,
+                "documentation": "Go/No-Go poll result for the LaunchDirector console (true = GO). Overridable through launch.set_go."
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "Propellant",
+        "tagType": "Folder",
+        "tags": [
+          {
+            "name": "LOX",
+            "tagType": "Folder",
+            "tags": [
+              {
+                "name": "TankLevelPct",
+                "tagType": "AtomicTag",
+                "valueSource": "memory",
+                "dataType": "Float8",
+                "value": 0.0,
+                "engUnit": "%",
+                "documentation": "LOX tank fill level.",
+                "historyEnabled": true,
+                "historyProvider": "IgniteHistorian",
+                "historySampleMode": "OnChange",
+                "historyMinTime": 1,
+                "historyMinTimeUnits": "SEC",
+                "historyMaxTime": 60,
+                "historyMaxTimeUnits": "SEC",
+                "historicalDeadband": 0.05,
+                "historicalDeadbandStyle": "Discrete"
+              },
+              {
+                "name": "FlowKgS",
+                "tagType": "AtomicTag",
+                "valueSource": "memory",
+                "dataType": "Float8",
+                "value": 0.0,
+                "engUnit": "kg/s",
+                "documentation": "LOX transfer flow (negative while offloading).",
+                "historyEnabled": true,
+                "historyProvider": "IgniteHistorian",
+                "historySampleMode": "OnChange",
+                "historyMinTime": 1,
+                "historyMinTimeUnits": "SEC",
+                "historyMaxTime": 60,
+                "historyMaxTimeUnits": "SEC",
+                "historicalDeadband": 1.0,
+                "historicalDeadbandStyle": "Discrete"
+              },
+              {
+                "name": "TempK",
+                "tagType": "AtomicTag",
+                "valueSource": "memory",
+                "dataType": "Float8",
+                "value": 294.0,
+                "engUnit": "K",
+                "documentation": "LOX tank / line temperature.",
+                "historyEnabled": true,
+                "historyProvider": "IgniteHistorian",
+                "historySampleMode": "OnChange",
+                "historyMinTime": 1,
+                "historyMinTimeUnits": "SEC",
+                "historyMaxTime": 60,
+                "historyMaxTimeUnits": "SEC",
+                "historicalDeadband": 0.1,
+                "historicalDeadbandStyle": "Discrete",
+                "alarms": [
+                  {
+                    "name": "HighTemp",
+                    "mode": "AboveValue",
+                    "setpointA": 110.0,
+                    "priority": "Medium",
+                    "deadband": 1.0,
+                    "label": "LOX temperature high",
+                    "enabled": {
+                      "bindType": "Expression",
+                      "value": "{[.]ChilldownState} = \"READY\""
+                    }
+                  }
+                ]
+              },
+              {
+                "name": "PressureBar",
+                "tagType": "AtomicTag",
+                "valueSource": "memory",
+                "dataType": "Float8",
+                "value": 1.5,
+                "engUnit": "bar",
+                "documentation": "LOX tank ullage pressure (absolute).",
+                "historyEnabled": true,
+                "historyProvider": "IgniteHistorian",
+                "historySampleMode": "OnChange",
+                "historyMinTime": 1,
+                "historyMinTimeUnits": "SEC",
+                "historyMaxTime": 60,
+                "historyMaxTimeUnits": "SEC",
+                "historicalDeadband": 0.005,
+                "historicalDeadbandStyle": "Discrete",
+                "alarms": [
+                  {
+                    "name": "HighPressure",
+                    "mode": "AboveValue",
+                    "setpointA": 3.5,
+                    "priority": "High",
+                    "deadband": 0.1,
+                    "label": "LOX tank pressure high"
+                  },
+                  {
+                    "name": "LowPressure",
+                    "mode": "BelowValue",
+                    "setpointA": 1.8,
+                    "priority": "High",
+                    "deadband": 0.1,
+                    "label": "LOX tank pressure low (suspected leak)",
+                    "enabled": {
+                      "bindType": "Expression",
+                      "value": "{[.]ChilldownState} = \"READY\""
+                    }
+                  }
+                ]
+              },
+              {
+                "name": "ChilldownState",
+                "tagType": "AtomicTag",
+                "valueSource": "memory",
+                "dataType": "String",
+                "value": "WARM",
+                "documentation": "LOX chilldown state: WARM|CHILLING|READY."
+              },
+              {
+                "name": "FillValveOpen",
+                "tagType": "AtomicTag",
+                "valueSource": "memory",
+                "dataType": "Boolean",
+                "value": false,
+                "documentation": "LOX fill / chill valve."
+              },
+              {
+                "name": "VentValveOpen",
+                "tagType": "AtomicTag",
+                "valueSource": "memory",
+                "dataType": "Boolean",
+                "value": false,
+                "documentation": "LOX ullage vent valve (opens above band, closes below)."
+              },
+              {
+                "name": "BoiloffKgS",
+                "tagType": "AtomicTag",
+                "valueSource": "memory",
+                "dataType": "Float8",
+                "value": 0.0,
+                "engUnit": "kg/s",
+                "documentation": "LOX boil-off rate, proportional to (ambient - cryogen temperature)."
+              }
+            ]
+          },
+          {
+            "name": "CH4",
+            "tagType": "Folder",
+            "tags": [
+              {
+                "name": "TankLevelPct",
+                "tagType": "AtomicTag",
+                "valueSource": "memory",
+                "dataType": "Float8",
+                "value": 0.0,
+                "engUnit": "%",
+                "documentation": "CH4 tank fill level.",
+                "historyEnabled": true,
+                "historyProvider": "IgniteHistorian",
+                "historySampleMode": "OnChange",
+                "historyMinTime": 1,
+                "historyMinTimeUnits": "SEC",
+                "historyMaxTime": 60,
+                "historyMaxTimeUnits": "SEC",
+                "historicalDeadband": 0.05,
+                "historicalDeadbandStyle": "Discrete"
+              },
+              {
+                "name": "FlowKgS",
+                "tagType": "AtomicTag",
+                "valueSource": "memory",
+                "dataType": "Float8",
+                "value": 0.0,
+                "engUnit": "kg/s",
+                "documentation": "CH4 transfer flow (negative while offloading).",
+                "historyEnabled": true,
+                "historyProvider": "IgniteHistorian",
+                "historySampleMode": "OnChange",
+                "historyMinTime": 1,
+                "historyMinTimeUnits": "SEC",
+                "historyMaxTime": 60,
+                "historyMaxTimeUnits": "SEC",
+                "historicalDeadband": 1.0,
+                "historicalDeadbandStyle": "Discrete"
+              },
+              {
+                "name": "TempK",
+                "tagType": "AtomicTag",
+                "valueSource": "memory",
+                "dataType": "Float8",
+                "value": 294.0,
+                "engUnit": "K",
+                "documentation": "CH4 tank / line temperature.",
+                "historyEnabled": true,
+                "historyProvider": "IgniteHistorian",
+                "historySampleMode": "OnChange",
+                "historyMinTime": 1,
+                "historyMinTimeUnits": "SEC",
+                "historyMaxTime": 60,
+                "historyMaxTimeUnits": "SEC",
+                "historicalDeadband": 0.1,
+                "historicalDeadbandStyle": "Discrete",
+                "alarms": [
+                  {
+                    "name": "HighTemp",
+                    "mode": "AboveValue",
+                    "setpointA": 135.0,
+                    "priority": "Medium",
+                    "deadband": 1.0,
+                    "label": "CH4 temperature high",
+                    "enabled": {
+                      "bindType": "Expression",
+                      "value": "{[.]ChilldownState} = \"READY\""
+                    }
+                  }
+                ]
+              },
+              {
+                "name": "PressureBar",
+                "tagType": "AtomicTag",
+                "valueSource": "memory",
+                "dataType": "Float8",
+                "value": 1.5,
+                "engUnit": "bar",
+                "documentation": "CH4 tank ullage pressure (absolute).",
+                "historyEnabled": true,
+                "historyProvider": "IgniteHistorian",
+                "historySampleMode": "OnChange",
+                "historyMinTime": 1,
+                "historyMinTimeUnits": "SEC",
+                "historyMaxTime": 60,
+                "historyMaxTimeUnits": "SEC",
+                "historicalDeadband": 0.005,
+                "historicalDeadbandStyle": "Discrete",
+                "alarms": [
+                  {
+                    "name": "HighPressure",
+                    "mode": "AboveValue",
+                    "setpointA": 3.5,
+                    "priority": "High",
+                    "deadband": 0.1,
+                    "label": "CH4 tank pressure high"
+                  },
+                  {
+                    "name": "LowPressure",
+                    "mode": "BelowValue",
+                    "setpointA": 1.8,
+                    "priority": "High",
+                    "deadband": 0.1,
+                    "label": "CH4 tank pressure low (suspected leak)",
+                    "enabled": {
+                      "bindType": "Expression",
+                      "value": "{[.]ChilldownState} = \"READY\""
+                    }
+                  }
+                ]
+              },
+              {
+                "name": "ChilldownState",
+                "tagType": "AtomicTag",
+                "valueSource": "memory",
+                "dataType": "String",
+                "value": "WARM",
+                "documentation": "CH4 chilldown state: WARM|CHILLING|READY."
+              },
+              {
+                "name": "FillValveOpen",
+                "tagType": "AtomicTag",
+                "valueSource": "memory",
+                "dataType": "Boolean",
+                "value": false,
+                "documentation": "CH4 fill / chill valve."
+              },
+              {
+                "name": "VentValveOpen",
+                "tagType": "AtomicTag",
+                "valueSource": "memory",
+                "dataType": "Boolean",
+                "value": false,
+                "documentation": "CH4 ullage vent valve (opens above band, closes below)."
+              },
+              {
+                "name": "BoiloffKgS",
+                "tagType": "AtomicTag",
+                "valueSource": "memory",
+                "dataType": "Float8",
+                "value": 0.0,
+                "engUnit": "kg/s",
+                "documentation": "CH4 boil-off rate, proportional to (ambient - cryogen temperature)."
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "Vehicle",
+        "tagType": "Folder",
+        "tags": [
+          {
+            "name": "Stage1",
+            "tagType": "Folder",
+            "tags": [
+              {
+                "name": "LOXPressureBar",
+                "tagType": "AtomicTag",
+                "valueSource": "memory",
+                "dataType": "Float8",
+                "value": 1.2,
+                "engUnit": "bar",
+                "documentation": "Stage 1 LOX tank pressure.",
+                "historyEnabled": true,
+                "historyProvider": "IgniteHistorian",
+                "historySampleMode": "OnChange",
+                "historyMinTime": 1,
+                "historyMinTimeUnits": "SEC",
+                "historyMaxTime": 60,
+                "historyMaxTimeUnits": "SEC",
+                "historicalDeadband": 0.01,
+                "historicalDeadbandStyle": "Discrete"
+              },
+              {
+                "name": "CH4PressureBar",
+                "tagType": "AtomicTag",
+                "valueSource": "memory",
+                "dataType": "Float8",
+                "value": 1.2,
+                "engUnit": "bar",
+                "documentation": "Stage 1 CH4 tank pressure.",
+                "historyEnabled": true,
+                "historyProvider": "IgniteHistorian",
+                "historySampleMode": "OnChange",
+                "historyMinTime": 1,
+                "historyMinTimeUnits": "SEC",
+                "historyMaxTime": 60,
+                "historyMaxTimeUnits": "SEC",
+                "historicalDeadband": 0.01,
+                "historicalDeadbandStyle": "Discrete"
+              }
+            ]
+          },
+          {
+            "name": "Stage2",
+            "tagType": "Folder",
+            "tags": [
+              {
+                "name": "LOXPressureBar",
+                "tagType": "AtomicTag",
+                "valueSource": "memory",
+                "dataType": "Float8",
+                "value": 1.2,
+                "engUnit": "bar",
+                "documentation": "Stage 2 LOX tank pressure."
+              },
+              {
+                "name": "CH4PressureBar",
+                "tagType": "AtomicTag",
+                "valueSource": "memory",
+                "dataType": "Float8",
+                "value": 1.2,
+                "engUnit": "bar",
+                "documentation": "Stage 2 CH4 tank pressure."
+              }
+            ]
+          },
+          {
+            "name": "BatteryVoltage",
+            "tagType": "AtomicTag",
+            "valueSource": "memory",
+            "dataType": "Float8",
+            "value": 27.7,
+            "engUnit": "V",
+            "documentation": "Vehicle main bus voltage.",
+            "historyEnabled": true,
+            "historyProvider": "IgniteHistorian",
+            "historySampleMode": "OnChange",
+            "historyMinTime": 1,
+            "historyMinTimeUnits": "SEC",
+            "historyMaxTime": 60,
+            "historyMaxTimeUnits": "SEC",
+            "historicalDeadband": 0.02,
+            "historicalDeadbandStyle": "Discrete",
+            "alarms": [
+              {
+                "name": "LowVoltage",
+                "mode": "BelowValue",
+                "setpointA": 25.5,
+                "priority": "High",
+                "deadband": 0.2,
+                "label": "Vehicle battery voltage low"
+              }
+            ]
+          },
+          {
+            "name": "BatterySOCPct",
+            "tagType": "AtomicTag",
+            "valueSource": "memory",
+            "dataType": "Float8",
+            "value": 90.0,
+            "engUnit": "%",
+            "documentation": "Vehicle battery state of charge."
+          },
+          {
+            "name": "AvionicsTempC",
+            "tagType": "AtomicTag",
+            "valueSource": "memory",
+            "dataType": "Float8",
+            "value": 24.0,
+            "engUnit": "degC",
+            "documentation": "Avionics bay temperature.",
+            "historyEnabled": true,
+            "historyProvider": "IgniteHistorian",
+            "historySampleMode": "OnChange",
+            "historyMinTime": 1,
+            "historyMinTimeUnits": "SEC",
+            "historyMaxTime": 60,
+            "historyMaxTimeUnits": "SEC",
+            "historicalDeadband": 0.1,
+            "historicalDeadbandStyle": "Discrete"
+          },
+          {
+            "name": "EngineChillState",
+            "tagType": "AtomicTag",
+            "valueSource": "memory",
+            "dataType": "String",
+            "value": "WARM",
+            "documentation": "Engine chill state: WARM|CHILLING|READY|FIRING|SHUTDOWN."
+          },
+          {
+            "name": "GimbalCheckOK",
+            "tagType": "AtomicTag",
+            "valueSource": "memory",
+            "dataType": "Boolean",
+            "value": false,
+            "documentation": "Engine gimbal check passed (runs at about T-24:00)."
+          },
+          {
+            "name": "ThrustPct",
+            "tagType": "AtomicTag",
+            "valueSource": "memory",
+            "dataType": "Float8",
+            "value": 0.0,
+            "engUnit": "%",
+            "documentation": "Thrust of the burning stage, percent of its nominal.",
+            "historyEnabled": true,
+            "historyProvider": "IgniteHistorian",
+            "historySampleMode": "OnChange",
+            "historyMinTime": 1,
+            "historyMinTimeUnits": "SEC",
+            "historyMaxTime": 60,
+            "historyMaxTimeUnits": "SEC",
+            "historicalDeadband": 0.5,
+            "historicalDeadbandStyle": "Discrete"
+          },
+          {
+            "name": "AltitudeM",
+            "tagType": "AtomicTag",
+            "valueSource": "memory",
+            "dataType": "Float8",
+            "value": 0.0,
+            "engUnit": "m",
+            "documentation": "Altitude above the pad.",
+            "historyEnabled": true,
+            "historyProvider": "IgniteHistorian",
+            "historySampleMode": "OnChange",
+            "historyMinTime": 1,
+            "historyMinTimeUnits": "SEC",
+            "historyMaxTime": 60,
+            "historyMaxTimeUnits": "SEC",
+            "historicalDeadband": 10.0,
+            "historicalDeadbandStyle": "Discrete"
+          },
+          {
+            "name": "VelocityMS",
+            "tagType": "AtomicTag",
+            "valueSource": "memory",
+            "dataType": "Float8",
+            "value": 0.0,
+            "engUnit": "m/s",
+            "documentation": "Inertial speed.",
+            "historyEnabled": true,
+            "historyProvider": "IgniteHistorian",
+            "historySampleMode": "OnChange",
+            "historyMinTime": 1,
+            "historyMinTimeUnits": "SEC",
+            "historyMaxTime": 60,
+            "historyMaxTimeUnits": "SEC",
+            "historicalDeadband": 5.0,
+            "historicalDeadbandStyle": "Discrete"
+          },
+          {
+            "name": "DownrangeKm",
+            "tagType": "AtomicTag",
+            "valueSource": "memory",
+            "dataType": "Float8",
+            "value": 0.0,
+            "engUnit": "km",
+            "documentation": "Downrange distance."
+          },
+          {
+            "name": "AccelG",
+            "tagType": "AtomicTag",
+            "valueSource": "memory",
+            "dataType": "Float8",
+            "value": 1.0,
+            "engUnit": "g",
+            "documentation": "Sensed acceleration (1.0 on the pad, 0 in free fall).",
+            "historyEnabled": true,
+            "historyProvider": "IgniteHistorian",
+            "historySampleMode": "OnChange",
+            "historyMinTime": 1,
+            "historyMinTimeUnits": "SEC",
+            "historyMaxTime": 60,
+            "historyMaxTimeUnits": "SEC",
+            "historicalDeadband": 0.02,
+            "historicalDeadbandStyle": "Discrete"
+          },
+          {
+            "name": "MaxQ",
+            "tagType": "AtomicTag",
+            "valueSource": "memory",
+            "dataType": "Boolean",
+            "value": false,
+            "documentation": "Latched true once the vehicle has passed maximum dynamic pressure."
+          },
+          {
+            "name": "MECO",
+            "tagType": "AtomicTag",
+            "valueSource": "memory",
+            "dataType": "Boolean",
+            "value": false,
+            "documentation": "Latched true after main engine cutoff."
+          },
+          {
+            "name": "StageSep",
+            "tagType": "AtomicTag",
+            "valueSource": "memory",
+            "dataType": "Boolean",
+            "value": false,
+            "documentation": "Latched true after stage separation."
+          },
+          {
+            "name": "SECO",
+            "tagType": "AtomicTag",
+            "valueSource": "memory",
+            "dataType": "Boolean",
+            "value": false,
+            "documentation": "Latched true after second engine cutoff."
+          }
+        ]
+      },
+      {
+        "name": "Pad",
+        "tagType": "Folder",
+        "tags": [
+          {
+            "name": "DelugeArmed",
+            "tagType": "AtomicTag",
+            "valueSource": "memory",
+            "dataType": "Boolean",
+            "value": false,
+            "documentation": "Water deluge armed (from T-0:10)."
+          },
+          {
+            "name": "DelugeFlowLpm",
+            "tagType": "AtomicTag",
+            "valueSource": "memory",
+            "dataType": "Float8",
+            "value": 0.0,
+            "engUnit": "L/min",
+            "documentation": "Deluge water flow.",
+            "historyEnabled": true,
+            "historyProvider": "IgniteHistorian",
+            "historySampleMode": "OnChange",
+            "historyMinTime": 1,
+            "historyMinTimeUnits": "SEC",
+            "historyMaxTime": 60,
+            "historyMaxTimeUnits": "SEC",
+            "historicalDeadband": 200.0,
+            "historicalDeadbandStyle": "Discrete"
+          },
+          {
+            "name": "WaterTowerLevelPct",
+            "tagType": "AtomicTag",
+            "valueSource": "memory",
+            "dataType": "Float8",
+            "value": 100.0,
+            "engUnit": "%",
+            "documentation": "Deluge water tower level.",
+            "historyEnabled": true,
+            "historyProvider": "IgniteHistorian",
+            "historySampleMode": "OnChange",
+            "historyMinTime": 1,
+            "historyMinTimeUnits": "SEC",
+            "historyMaxTime": 60,
+            "historyMaxTimeUnits": "SEC",
+            "historicalDeadband": 0.05,
+            "historicalDeadbandStyle": "Discrete"
+          },
+          {
+            "name": "GSEPower",
+            "tagType": "Folder",
+            "tags": [
+              {
+                "name": "BusAVolts",
+                "tagType": "AtomicTag",
+                "valueSource": "memory",
+                "dataType": "Float8",
+                "value": 480.0,
+                "engUnit": "V",
+                "documentation": "GSE power bus A voltage.",
+                "historyEnabled": true,
+                "historyProvider": "IgniteHistorian",
+                "historySampleMode": "OnChange",
+                "historyMinTime": 1,
+                "historyMinTimeUnits": "SEC",
+                "historyMaxTime": 60,
+                "historyMaxTimeUnits": "SEC",
+                "historicalDeadband": 0.3,
+                "historicalDeadbandStyle": "Discrete",
+                "alarms": [
+                  {
+                    "name": "LowVoltage",
+                    "mode": "BelowValue",
+                    "setpointA": 455.0,
+                    "priority": "High",
+                    "deadband": 2.0,
+                    "label": "GSE bus A voltage low"
+                  }
+                ]
+              },
+              {
+                "name": "BusBVolts",
+                "tagType": "AtomicTag",
+                "valueSource": "memory",
+                "dataType": "Float8",
+                "value": 480.0,
+                "engUnit": "V",
+                "documentation": "GSE power bus B voltage.",
+                "historyEnabled": true,
+                "historyProvider": "IgniteHistorian",
+                "historySampleMode": "OnChange",
+                "historyMinTime": 1,
+                "historyMinTimeUnits": "SEC",
+                "historyMaxTime": 60,
+                "historyMaxTimeUnits": "SEC",
+                "historicalDeadband": 0.3,
+                "historicalDeadbandStyle": "Discrete",
+                "alarms": [
+                  {
+                    "name": "LowVoltage",
+                    "mode": "BelowValue",
+                    "setpointA": 455.0,
+                    "priority": "High",
+                    "deadband": 2.0,
+                    "label": "GSE bus B voltage low"
+                  }
+                ]
+              },
+              {
+                "name": "BusAAmps",
+                "tagType": "AtomicTag",
+                "valueSource": "memory",
+                "dataType": "Float8",
+                "value": 40.0,
+                "engUnit": "A",
+                "documentation": "GSE power bus A current.",
+                "historyEnabled": true,
+                "historyProvider": "IgniteHistorian",
+                "historySampleMode": "OnChange",
+                "historyMinTime": 1,
+                "historyMinTimeUnits": "SEC",
+                "historyMaxTime": 60,
+                "historyMaxTimeUnits": "SEC",
+                "historicalDeadband": 2.0,
+                "historicalDeadbandStyle": "Discrete"
+              },
+              {
+                "name": "BusBAmps",
+                "tagType": "AtomicTag",
+                "valueSource": "memory",
+                "dataType": "Float8",
+                "value": 35.0,
+                "engUnit": "A",
+                "documentation": "GSE power bus B current.",
+                "historyEnabled": true,
+                "historyProvider": "IgniteHistorian",
+                "historySampleMode": "OnChange",
+                "historyMinTime": 1,
+                "historyMinTimeUnits": "SEC",
+                "historyMaxTime": 60,
+                "historyMaxTimeUnits": "SEC",
+                "historicalDeadband": 2.0,
+                "historicalDeadbandStyle": "Discrete"
+              }
+            ]
+          },
+          {
+            "name": "UmbilicalConnected",
+            "tagType": "AtomicTag",
+            "valueSource": "memory",
+            "dataType": "Boolean",
+            "value": true,
+            "documentation": "Vehicle umbilicals connected."
+          },
+          {
+            "name": "StrongbackRetractPct",
+            "tagType": "AtomicTag",
+            "valueSource": "memory",
+            "dataType": "Float8",
+            "value": 0.0,
+            "engUnit": "%",
+            "documentation": "Strongback retraction (0 = against vehicle, 100 = fully retracted)."
+          },
+          {
+            "name": "FlameTrenchTempC",
+            "tagType": "AtomicTag",
+            "valueSource": "memory",
+            "dataType": "Float8",
+            "value": 25.0,
+            "engUnit": "degC",
+            "documentation": "Flame trench surface temperature.",
+            "historyEnabled": true,
+            "historyProvider": "IgniteHistorian",
+            "historySampleMode": "OnChange",
+            "historyMinTime": 1,
+            "historyMinTimeUnits": "SEC",
+            "historyMaxTime": 60,
+            "historyMaxTimeUnits": "SEC",
+            "historicalDeadband": 0.5,
+            "historicalDeadbandStyle": "Discrete",
+            "alarms": [
+              {
+                "name": "HighTemp",
+                "mode": "AboveValue",
+                "setpointA": 250.0,
+                "priority": "Medium",
+                "deadband": 5.0,
+                "label": "Flame trench temperature high"
+              }
+            ]
+          },
+          {
+            "name": "FlameTrenchHumidityPct",
+            "tagType": "AtomicTag",
+            "valueSource": "memory",
+            "dataType": "Float8",
+            "value": 40.0,
+            "engUnit": "%",
+            "documentation": "Flame trench humidity proxy (rises with a LOX leak and with deluge)."
+          },
+          {
+            "name": "PadClear",
+            "tagType": "AtomicTag",
+            "valueSource": "memory",
+            "dataType": "Boolean",
+            "value": false,
+            "documentation": "Pad cleared of personnel."
+          }
+        ]
+      },
+      {
+        "name": "Weather",
+        "tagType": "Folder",
+        "tags": [
+          {
+            "name": "WindSpeedMS",
+            "tagType": "AtomicTag",
+            "valueSource": "memory",
+            "dataType": "Float8",
+            "value": 5.5,
+            "engUnit": "m/s",
+            "documentation": "Mean wind speed at the pad.",
+            "historyEnabled": true,
+            "historyProvider": "IgniteHistorian",
+            "historySampleMode": "OnChange",
+            "historyMinTime": 1,
+            "historyMinTimeUnits": "SEC",
+            "historyMaxTime": 60,
+            "historyMaxTimeUnits": "SEC",
+            "historicalDeadband": 0.05,
+            "historicalDeadbandStyle": "Discrete",
+            "alarms": [
+              {
+                "name": "HighWind",
+                "mode": "AboveValue",
+                "setpointA": 12.0,
+                "priority": "High",
+                "deadband": 0.5,
+                "label": "Wind exceeds launch commit criteria"
+              }
+            ]
+          },
+          {
+            "name": "WindDirDeg",
+            "tagType": "AtomicTag",
+            "valueSource": "memory",
+            "dataType": "Float8",
+            "value": 80.0,
+            "engUnit": "deg",
+            "documentation": "Wind direction."
+          },
+          {
+            "name": "GustMS",
+            "tagType": "AtomicTag",
+            "valueSource": "memory",
+            "dataType": "Float8",
+            "value": 7.0,
+            "engUnit": "m/s",
+            "documentation": "Peak gust.",
+            "historyEnabled": true,
+            "historyProvider": "IgniteHistorian",
+            "historySampleMode": "OnChange",
+            "historyMinTime": 1,
+            "historyMinTimeUnits": "SEC",
+            "historyMaxTime": 60,
+            "historyMaxTimeUnits": "SEC",
+            "historicalDeadband": 0.1,
+            "historicalDeadbandStyle": "Discrete"
+          },
+          {
+            "name": "TempC",
+            "tagType": "AtomicTag",
+            "valueSource": "memory",
+            "dataType": "Float8",
+            "value": 22.0,
+            "engUnit": "degC",
+            "documentation": "Ambient temperature."
+          },
+          {
+            "name": "HumidityPct",
+            "tagType": "AtomicTag",
+            "valueSource": "memory",
+            "dataType": "Float8",
+            "value": 60.0,
+            "engUnit": "%",
+            "documentation": "Relative humidity."
+          },
+          {
+            "name": "PressureHPa",
+            "tagType": "AtomicTag",
+            "valueSource": "memory",
+            "dataType": "Float8",
+            "value": 1013.0,
+            "engUnit": "hPa",
+            "documentation": "Barometric pressure."
+          },
+          {
+            "name": "LightningDistanceKm",
+            "tagType": "AtomicTag",
+            "valueSource": "memory",
+            "dataType": "Float8",
+            "value": 70.0,
+            "engUnit": "km",
+            "documentation": "Distance to nearest lightning.",
+            "historyEnabled": true,
+            "historyProvider": "IgniteHistorian",
+            "historySampleMode": "OnChange",
+            "historyMinTime": 1,
+            "historyMinTimeUnits": "SEC",
+            "historyMaxTime": 60,
+            "historyMaxTimeUnits": "SEC",
+            "historicalDeadband": 0.2,
+            "historicalDeadbandStyle": "Discrete",
+            "alarms": [
+              {
+                "name": "LightningProximity",
+                "mode": "BelowValue",
+                "setpointA": 10.0,
+                "priority": "Critical",
+                "deadband": 1.0,
+                "label": "Lightning within 10 km"
+              }
+            ]
+          },
+          {
+            "name": "CeilingM",
+            "tagType": "AtomicTag",
+            "valueSource": "memory",
+            "dataType": "Float8",
+            "value": 3000.0,
+            "engUnit": "m",
+            "documentation": "Cloud ceiling."
+          },
+          {
+            "name": "UpperWindsMS",
+            "tagType": "AtomicTag",
+            "valueSource": "memory",
+            "dataType": "Float8",
+            "value": 22.0,
+            "engUnit": "m/s",
+            "documentation": "Upper-level winds (max over the ascent corridor)."
+          },
+          {
+            "name": "GoForWeather",
+            "tagType": "AtomicTag",
+            "valueSource": "memory",
+            "dataType": "Boolean",
+            "value": true,
+            "documentation": "Weather within launch commit criteria."
+          }
+        ]
+      },
+      {
+        "name": "Range",
+        "tagType": "Folder",
+        "tags": [
+          {
+            "name": "RangeClear",
+            "tagType": "AtomicTag",
+            "valueSource": "memory",
+            "dataType": "Boolean",
+            "value": true,
+            "documentation": "Range clear of vessels and aircraft."
+          },
+          {
+            "name": "TrackingLock",
+            "tagType": "AtomicTag",
+            "valueSource": "memory",
+            "dataType": "Boolean",
+            "value": true,
+            "documentation": "Range tracking lock on the vehicle."
+          },
+          {
+            "name": "FTSArmed",
+            "tagType": "AtomicTag",
+            "valueSource": "memory",
+            "dataType": "Boolean",
+            "value": false,
+            "documentation": "Flight termination system armed (from T-1:00)."
+          }
+        ]
+      },
+      {
+        "name": "_Sim_",
+        "tagType": "Folder",
+        "tags": [
+          {
+            "name": "Enabled",
+            "tagType": "AtomicTag",
+            "valueSource": "memory",
+            "dataType": "Boolean",
+            "value": true,
+            "documentation": "Run the simulation. Writable."
+          },
+          {
+            "name": "Scenario",
+            "tagType": "AtomicTag",
+            "valueSource": "memory",
+            "dataType": "String",
+            "value": "nominal",
+            "documentation": "Scenario: nominal|hold_t40s|lox_leak_abort|weather_scrub. Use launch.set_scenario."
+          },
+          {
+            "name": "ScenarioStep",
+            "tagType": "AtomicTag",
+            "valueSource": "memory",
+            "dataType": "Int4",
+            "value": 0,
+            "engUnit": "step",
+            "documentation": "Scenario progress counter (0 = armed / not started)."
+          },
+          {
+            "name": "SpeedFactor",
+            "tagType": "AtomicTag",
+            "valueSource": "memory",
+            "dataType": "Float8",
+            "value": 4.0,
+            "engUnit": "x",
+            "documentation": "Sim seconds per real second (a full cycle takes about 12-13 real minutes at 4)."
+          },
+          {
+            "name": "Seed",
+            "tagType": "AtomicTag",
+            "valueSource": "memory",
+            "dataType": "Int4",
+            "value": 52,
+            "engUnit": "-",
+            "documentation": "Seed for the deterministic random streams."
+          },
+          {
+            "name": "TickCount",
+            "tagType": "AtomicTag",
+            "valueSource": "memory",
+            "dataType": "Int4",
+            "value": 0,
+            "engUnit": "ticks",
+            "documentation": "Timer ticks executed."
+          },
+          {
+            "name": "LastTickMs",
+            "tagType": "AtomicTag",
+            "valueSource": "memory",
+            "dataType": "Int8",
+            "value": 0,
+            "engUnit": "ms",
+            "documentation": "Epoch milliseconds of the last tick; dt = SpeedFactor x elapsed real time."
+          },
+          {
+            "name": "AutoCycle",
+            "tagType": "AtomicTag",
+            "valueSource": "memory",
+            "dataType": "Boolean",
+            "value": true,
+            "documentation": "Restart the count automatically after RECYCLE. Writable."
+          },
+          {
+            "name": "StartTMinus",
+            "tagType": "AtomicTag",
+            "valueSource": "memory",
+            "dataType": "Int4",
+            "value": -2400,
+            "engUnit": "s",
+            "documentation": "T-minus a new count starts at. Writable."
+          },
+          {
+            "name": "Fault",
+            "tagType": "Folder",
+            "tags": [
+              {
+                "name": "LOXLeak",
+                "tagType": "AtomicTag",
+                "valueSource": "memory",
+                "dataType": "Boolean",
+                "value": false,
+                "documentation": "LOX leak active (extra outflow, falling pressure)."
+              },
+              {
+                "name": "WeatherScrub",
+                "tagType": "AtomicTag",
+                "valueSource": "memory",
+                "dataType": "Boolean",
+                "value": false,
+                "documentation": "Wind rising past the launch commit limit."
+              }
+            ]
+          },
+          {
+            "name": "LastError",
+            "tagType": "AtomicTag",
+            "valueSource": "memory",
+            "dataType": "String",
+            "value": "",
+            "documentation": "Last exception caught by the timer script; empty when healthy."
+          },
+          {
+            "name": "Cmd",
+            "tagType": "Folder",
+            "tags": [
+              {
+                "name": "Pending",
+                "tagType": "AtomicTag",
+                "valueSource": "memory",
+                "dataType": "String",
+                "value": "",
+                "documentation": "Command queue slot written by the launch library: START|RESUME|HOLD|ABORT|RECYCLE."
+              },
+              {
+                "name": "Arg",
+                "tagType": "AtomicTag",
+                "valueSource": "memory",
+                "dataType": "String",
+                "value": "",
+                "documentation": "Argument for the pending command (T-minus seconds or reason text)."
+              }
+            ]
+          },
+          {
+            "name": "GoOverride",
+            "tagType": "Folder",
+            "tags": [
+              {
+                "name": "Propellant",
+                "tagType": "AtomicTag",
+                "valueSource": "memory",
+                "dataType": "String",
+                "value": "AUTO",
+                "documentation": "Manual Go/No-Go override for Propellant: AUTO|GO|NOGO."
+              },
+              {
+                "name": "GSE",
+                "tagType": "AtomicTag",
+                "valueSource": "memory",
+                "dataType": "String",
+                "value": "AUTO",
+                "documentation": "Manual Go/No-Go override for GSE: AUTO|GO|NOGO."
+              },
+              {
+                "name": "Range",
+                "tagType": "AtomicTag",
+                "valueSource": "memory",
+                "dataType": "String",
+                "value": "AUTO",
+                "documentation": "Manual Go/No-Go override for Range: AUTO|GO|NOGO."
+              },
+              {
+                "name": "Weather",
+                "tagType": "AtomicTag",
+                "valueSource": "memory",
+                "dataType": "String",
+                "value": "AUTO",
+                "documentation": "Manual Go/No-Go override for Weather: AUTO|GO|NOGO."
+              },
+              {
+                "name": "Vehicle",
+                "tagType": "AtomicTag",
+                "valueSource": "memory",
+                "dataType": "String",
+                "value": "AUTO",
+                "documentation": "Manual Go/No-Go override for Vehicle: AUTO|GO|NOGO."
+              },
+              {
+                "name": "LaunchDirector",
+                "tagType": "AtomicTag",
+                "valueSource": "memory",
+                "dataType": "String",
+                "value": "AUTO",
+                "documentation": "Manual Go/No-Go override for LaunchDirector: AUTO|GO|NOGO."
+              }
+            ]
+          },
+          {
+            "name": "State",
+            "tagType": "Folder",
+            "tags": [
+              {
+                "name": "TMinusExact",
+                "tagType": "AtomicTag",
+                "valueSource": "memory",
+                "dataType": "Float8",
+                "value": -2400.0,
+                "engUnit": "s",
+                "documentation": "Unrounded T-minus."
+              },
+              {
+                "name": "PhaseTime",
+                "tagType": "AtomicTag",
+                "valueSource": "memory",
+                "dataType": "Float8",
+                "value": 0.0,
+                "engUnit": "s",
+                "documentation": "Sim seconds spent in the current phase."
+              },
+              {
+                "name": "CountTime",
+                "tagType": "AtomicTag",
+                "valueSource": "memory",
+                "dataType": "Float8",
+                "value": 0.0,
+                "engUnit": "s",
+                "documentation": "Sim seconds since the count started."
+              },
+              {
+                "name": "HoldsDone",
+                "tagType": "AtomicTag",
+                "valueSource": "memory",
+                "dataType": "Int4",
+                "value": 0,
+                "engUnit": "-",
+                "documentation": "Bitmask of built-in holds already taken or skipped."
+              },
+              {
+                "name": "HoldKind",
+                "tagType": "AtomicTag",
+                "valueSource": "memory",
+                "dataType": "String",
+                "value": "",
+                "documentation": "Active hold kind: BUILTIN|NOGO|MANUAL|SCENARIO."
+              },
+              {
+                "name": "HoldIndex",
+                "tagType": "AtomicTag",
+                "valueSource": "memory",
+                "dataType": "Int4",
+                "value": -1,
+                "engUnit": "-",
+                "documentation": "Index of the active built-in hold (-1 none)."
+              },
+              {
+                "name": "HoldTime",
+                "tagType": "AtomicTag",
+                "valueSource": "memory",
+                "dataType": "Float8",
+                "value": 0.0,
+                "engUnit": "s",
+                "documentation": "Sim seconds spent in the active hold."
+              },
+              {
+                "name": "HoldDwellLeft",
+                "tagType": "AtomicTag",
+                "valueSource": "memory",
+                "dataType": "Float8",
+                "value": 0.0,
+                "engUnit": "s",
+                "documentation": "Remaining dwell of a built-in hold."
+              },
+              {
+                "name": "GoStableTime",
+                "tagType": "AtomicTag",
+                "valueSource": "memory",
+                "dataType": "Float8",
+                "value": 0.0,
+                "engUnit": "s",
+                "documentation": "Sim seconds all consoles have been GO during a hold."
+              },
+              {
+                "name": "NoGoTime",
+                "tagType": "AtomicTag",
+                "valueSource": "memory",
+                "dataType": "Float8",
+                "value": 0.0,
+                "engUnit": "s",
+                "documentation": "Sim seconds a console has been NO-GO while counting."
+              },
+              {
+                "name": "ScenarioApplied",
+                "tagType": "AtomicTag",
+                "valueSource": "memory",
+                "dataType": "String",
+                "value": "nominal",
+                "documentation": "Scenario the state machine last synchronised to."
+              },
+              {
+                "name": "ScenarioClock",
+                "tagType": "AtomicTag",
+                "valueSource": "memory",
+                "dataType": "Float8",
+                "value": 0.0,
+                "engUnit": "s",
+                "documentation": "Scenario trigger timer."
+              },
+              {
+                "name": "FlightTime",
+                "tagType": "AtomicTag",
+                "valueSource": "memory",
+                "dataType": "Float8",
+                "value": 0.0,
+                "engUnit": "s",
+                "documentation": "Seconds since T0."
+              },
+              {
+                "name": "MassKg",
+                "tagType": "AtomicTag",
+                "valueSource": "memory",
+                "dataType": "Float8",
+                "value": 0.0,
+                "engUnit": "kg",
+                "documentation": "Vehicle mass in flight."
+              },
+              {
+                "name": "VxMS",
+                "tagType": "AtomicTag",
+                "valueSource": "memory",
+                "dataType": "Float8",
+                "value": 0.0,
+                "engUnit": "m/s",
+                "documentation": "Horizontal velocity."
+              },
+              {
+                "name": "VyMS",
+                "tagType": "AtomicTag",
+                "valueSource": "memory",
+                "dataType": "Float8",
+                "value": 0.0,
+                "engUnit": "m/s",
+                "documentation": "Vertical velocity."
+              },
+              {
+                "name": "QMaxPa",
+                "tagType": "AtomicTag",
+                "valueSource": "memory",
+                "dataType": "Float8",
+                "value": 0.0,
+                "engUnit": "Pa",
+                "documentation": "Peak dynamic pressure seen this flight."
+              },
+              {
+                "name": "GustBoost",
+                "tagType": "AtomicTag",
+                "valueSource": "memory",
+                "dataType": "Float8",
+                "value": 0.0,
+                "engUnit": "m/s",
+                "documentation": "Decaying gust spike on top of the mean wind."
+              },
+              {
+                "name": "OkStreak",
+                "tagType": "AtomicTag",
+                "valueSource": "memory",
+                "dataType": "Int4",
+                "value": 0,
+                "engUnit": "ticks",
+                "documentation": "Consecutive error-free ticks."
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+]
