@@ -105,7 +105,7 @@ Not performance, but changed in this task: `?` help/about overlay and `?about` i
 | Target | Status |
 |---|---|
 | 60 fps scene / at least 55 fps at 1080p on an integrated GPU | **Unverified.** No GPU here; the operator reports "smooth" but sent no numbers. The `?perf` readout is now live in both demos to collect them |
-| Lighthouse performance at least 90 on the built page | **Not met** in this environment: data center 63 to 72, launch 45 (software WebGL, throttle-free desktop preset, plain HTTP lab). Data center's remaining TBT is initial mount plus software paint; a real GPU measurement is needed for launch |
+| Lighthouse performance at least 90 on the built page | **Not met** in this environment: data center 63 to 72, launch 45 (software WebGL, desktop preset, plain-HTTP lab). Data center's remaining TBT is initial mount plus software paint; a real GPU measurement is needed for launch |
 | Lighthouse accessibility at least 90 | Met: 100 on both |
 | No runtime calls to any host except the gateway | Met: zero non-gateway requests in every headless run (`externalRequests` empty) |
 | Fonts and assets bundled, licences recorded | Met (`docs/ASSETS.md` unchanged) |
