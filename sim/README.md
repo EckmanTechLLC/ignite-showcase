@@ -11,6 +11,9 @@ sim/
     project/              files copied into <data>/projects/demo/ignition/
       timer/launch_sim/         1 s timer: the physics + sequencer
       script-python/launch/     library module: the API the UI calls
+  datacenter/             Demo 2 - Data Center (see datacenter/README.md)
+    tags.json             675 tags under [default]DC/
+    project/              same layout: timer/dc_sim, script-python/dc
   scripts/
     load-tags.mjs         load a tag model through Ignite (operator tier)
     install-project.sh    copy project resources to the gateway host and restart the gateway
