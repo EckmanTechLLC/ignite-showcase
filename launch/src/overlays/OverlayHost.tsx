@@ -10,8 +10,9 @@ import { closeAllPanels, isOpen, togglePanel, usePanels, useToasts, type PanelId
 
 // ECharts lives in this chunk; it loads the first time the panel opens.
 const TelemetryPanel = lazy(() => import('./telemetry/TelemetryPanel'));
+const Help = lazy(() => import('./Help'));
 
-const KEYS: Record<string, PanelId> = { t: 'telemetry', a: 'alarms', c: 'controls', l: 'identity' };
+const KEYS: Record<string, PanelId> = { t: 'telemetry', a: 'alarms', c: 'controls', l: 'identity', '?': 'help' };
 
 /** Slide-in panels, toasts, keyboard (T A C L, Esc closes) and pollers. Sits next to the HUD, not in the R3F tree. */
 export function OverlayHost() {
@@ -19,6 +20,7 @@ export function OverlayHost() {
   const toasts = useToasts();
   useEffect(() => {
     startSession();
+    if (new URLSearchParams(window.location.search).has('about')) togglePanel('help', true);
     startAlarms();
     startStatusPolling(() => isOpen('controls') && getSession().canWrite);
     const onKey = (e: KeyboardEvent) => {
@@ -36,6 +38,11 @@ export function OverlayHost() {
     <>
       <ToolDock />
       <div className="ovl-stack">
+        {open.has('help') && (
+          <Suspense fallback={null}>
+            <Help />
+          </Suspense>
+        )}
         {open.has('identity') && <IdentityPanel />}
         {open.has('controls') && <Controls />}
         {open.has('alarms') && <AlarmBoard />}
@@ -60,6 +67,7 @@ const TOOLS: { id: PanelId; key: string; label: string }[] = [
   { id: 'telemetry', key: 'T', label: 'Telemetry' },
   { id: 'alarms', key: 'A', label: 'Alarms' },
   { id: 'controls', key: 'C', label: 'Controls' },
+  { id: 'help', key: '?', label: 'Help' },
 ];
 
 /** Panel buttons (with the alarm badge) and the session chip. */

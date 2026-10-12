@@ -10,12 +10,14 @@ import { selection } from '../selection';
 
 // The charting code (ECharts) only loads when the Trends panel is first opened.
 const TrendsPanel = defineAsyncComponent(() => import('./trends/TrendsPanel.vue'));
+const HelpPanel = defineAsyncComponent(() => import('./HelpPanel.vue'));
 
 const DOCK: { key: PanelKey; hot: string; label: string }[] = [
   { key: 'alarms', hot: 'A', label: 'Alarms' },
   { key: 'trends', hot: 'T', label: 'Trends' },
   { key: 'controls', hot: 'C', label: 'Controls' },
   { key: 'identity', hot: 'L', label: 'Login' },
+  { key: 'help', hot: '?', label: 'Help' },
 ];
 
 function onKey(e: KeyboardEvent): void {
@@ -29,6 +31,7 @@ function onKey(e: KeyboardEvent): void {
 }
 onMounted(() => {
   startAuth();
+  if (new URLSearchParams(location.search).has('about')) panel.value = 'help';
   startAlarms();
   window.addEventListener('keydown', onKey);
 });
@@ -56,6 +59,7 @@ watch(selection, (s) => {
   <TrendsPanel v-else-if="panel === 'trends'" />
   <ControlsPanel v-else-if="panel === 'controls'" />
   <IdentityPanel v-else-if="panel === 'identity'" />
+  <HelpPanel v-else-if="panel === 'help'" />
 
   <div class="toasts mono" aria-live="polite">
     <div v-for="t in toasts" :key="t.id" class="toast" :class="t.tone">{{ t.text }}</div>

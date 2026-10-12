@@ -2,7 +2,7 @@ import { useSyncExternalStore } from 'react';
 
 /** Which slide-in panels are open, plus toasts. A tiny module store; panels are independent of the scene. */
 
-export type PanelId = 'telemetry' | 'alarms' | 'controls' | 'identity';
+export type PanelId = 'telemetry' | 'alarms' | 'controls' | 'identity' | 'help';
 
 type Listener = () => void;
 

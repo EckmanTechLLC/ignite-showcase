@@ -1,8 +1,8 @@
 import { ref, shallowRef } from 'vue';
 
-export type PanelKey = 'alarms' | 'trends' | 'controls' | 'identity';
+export type PanelKey = 'alarms' | 'trends' | 'controls' | 'identity' | 'help';
 
-/** Panel currently open (one at a time). Keys: A alarms, T trends, C controls, L login/audit. */
+/** Panel currently open (one at a time). Keys: A alarms, T trends, C controls, L login/audit, ? help/about. */
 export const panel = ref<PanelKey | null>(null);
 
 export function togglePanel(k: PanelKey): void {

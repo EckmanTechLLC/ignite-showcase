@@ -337,3 +337,11 @@ dd.warnv .val b { color: var(--warn); }
   .ovl, .toast { animation: none; }
   .badge.crit, .alarm.act.unack.pr-Critical { animation: none; }
 }
+
+/* Help / about panel */
+.help-list { margin: 0; padding-left: 1.1em; display: flex; flex-direction: column; gap: 6px; color: var(--fg-1); font-size: var(--text-sm); }
+.help-list code { font-family: var(--font-mono); color: var(--fg-0); }
+.help-keys { margin: 0; display: grid; grid-template-columns: max-content 1fr; gap: 4px var(--space-3); font-size: var(--text-sm); }
+.help-keys > div { display: contents; }
+.help-keys dt { text-align: right; } .help-keys dd { margin: 0; color: var(--fg-1); }
+.help-keys kbd { font-family: var(--font-mono); font-size: var(--text-xs); padding: 0 4px; border: 1px solid var(--line-strong); border-radius: var(--radius-1); color: var(--fg-1); }
