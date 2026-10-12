@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { onBeforeUnmount, ref } from 'vue';
-import { onFrame } from './anim';
+import { onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { onFrame, reducedMotion } from './anim';
 
 // A conductor / pipe: an underlay that cuts crossings, a dim track, and dashes that travel along the path.
 // Dash speed (px/s) follows the load; inactive paths dim and stop.
@@ -10,16 +10,43 @@ const props = withDefaults(
 );
 const el = ref<SVGPathElement | null>(null);
 const period = props.dash.split(/\s+/).reduce((a, b) => a + Number(b), 0);
+// One Web Animation per path (one cycle = one dash period per second); only its playbackRate follows the load, and
+// it is touched only while the speed is easing or has changed, so a steady flow costs no per-frame script or style work.
+let anim: Animation | null = null;
 let cur = 0;
-let off = 0;
+let rate = 0;
+onMounted(() => {
+  anim = el.value?.animate?.(
+    [{ strokeDashoffset: '0px' }, { strokeDashoffset: `${props.reverse ? period : -period}px` }],
+    { duration: 1000, iterations: Infinity, easing: 'linear' },
+  ) ?? null;
+  anim?.pause();
+});
+// Reduced motion: the frame loop stops calling back, so also freeze a flow that was already running.
+watch(reducedMotion, (r) => {
+  if (!r) return;
+  anim?.pause();
+  cur = 0;
+  rate = 0;
+});
 const stop = onFrame((dt) => {
   const target = props.active ? props.speed : 0;
+  if (cur === target) return;
   cur += (target - cur) * Math.min(1, dt * 2.5);
-  if (cur < 0.05) return;
-  off = (off - cur * dt * (props.reverse ? -1 : 1)) % period;
-  if (el.value) el.value.style.strokeDashoffset = off.toFixed(2);
+  if (Math.abs(target - cur) < 0.05) cur = target;
+  const next = cur < 0.05 ? 0 : cur / period;
+  if (next === rate || !anim) return;
+  rate = next;
+  if (rate === 0) anim.pause();
+  else {
+    anim.updatePlaybackRate(rate);
+    if (anim.playState === 'paused') anim.play();
+  }
 });
-onBeforeUnmount(stop);
+onBeforeUnmount(() => {
+  stop();
+  anim?.cancel();
+});
 </script>
 
 <template>

@@ -9,10 +9,10 @@ function BigStat({ label, tag, digits }: { label: string; tag: TagName; digits: 
   return (
     <div>
       <dt>{label}</dt>
-      <div className="big">
+      <dd className="big">
         <b className="mono">{fmtNum(v, digits)}</b>
         <i>{unitOf(tag)}</i>
-      </div>
+      </dd>
     </div>
   );
 }
@@ -189,18 +189,18 @@ function Vehicle() {
       </h3>
       {flight ? (
         <>
-          <div className="flight">
+          <dl className="flight">
             <div>
               <dt>Altitude</dt>
-              <div className="big">
+              <dd className="big">
                 <b className="mono">{altKm >= 10 ? fmtNum(altKm, 1) : fmtNum(altKm * 1000, 0)}</b>
                 <i>{altKm >= 10 ? 'km' : 'm'}</i>
-              </div>
+              </dd>
             </div>
             <BigStat label="Velocity" tag="Launch/Vehicle/VelocityMS" digits={0} />
             <BigStat label="Accel" tag="Launch/Vehicle/AccelG" digits={2} />
             <BigStat label="Thrust" tag="Launch/Vehicle/ThrustPct" digits={0} />
-          </div>
+          </dl>
           <div className="flags">
             <span className={maxq ? 'on' : ''}>max-q</span>
             <span className={meco ? 'on' : ''}>meco</span>

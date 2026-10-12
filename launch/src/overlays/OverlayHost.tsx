@@ -37,7 +37,7 @@ export function OverlayHost() {
   return (
     <>
       <ToolDock />
-      <div className="ovl-stack">
+      <aside className="ovl-stack" aria-label="Panels">
         {open.has('help') && (
           <Suspense fallback={null}>
             <Help />
@@ -51,7 +51,7 @@ export function OverlayHost() {
             <TelemetryPanel />
           </Suspense>
         )}
-      </div>
+      </aside>
       <div className="toasts" aria-live="polite">
         {toasts.map((t) => (
           <div key={t.id} className={`toast ${t.tone}`}>

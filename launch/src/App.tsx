@@ -16,9 +16,9 @@ export function App() {
   }, []);
   return (
     <>
-      <div className="stage">
+      <main className="stage" aria-label="Launch pad scene">
         <Scene />
-      </div>
+      </main>
       <Hud />
       <OverlayHost />
     </>
