@@ -5,7 +5,7 @@ import { heatColor } from '../heat';
 import { num } from '../fmt';
 import { hasCritical } from '../overlays/alarms/store';
 import { panel } from '../overlays/ui';
-import { chunkStates, connection, dataAgeS, openChunks } from '../live/store';
+import { connection, dataAgeS, historyHealth, tagCount } from '../live/store';
 import { useTagNumber, useTagString } from '../live/store';
 
 defineProps<{ legend: boolean }>();
@@ -39,7 +39,7 @@ const itFrac = computed(() => (cap.value > 0 ? Math.min(1, it.value / cap.value)
 const pretty = (s: string) => (s ? s.replace(/_/g, ' ').toUpperCase() : '—');
 
 const linkLabel = computed(() => {
-  if (connection.value === 'closed') return 'OFFLINE';
+  if (connection.value === 'closed') return 'RECONNECTING';
   if (connection.value === 'connecting') return 'CONNECTING';
   return dataAgeS.value > 10 ? 'STALE' : 'LIVE';
 });
@@ -105,10 +105,11 @@ const age = computed(() => (Number.isFinite(dataAgeS.value) ? (dataAgeS.value < 
       </div>
     </div>
 
-    <div class="tile link" :title="chunkStates.join(', ')">
+    <div class="tile link" :title="historyHealth === 'unavailable' ? 'History/alarms unavailable: the gateway trial may have expired' : ''">
       <div class="k">SSE LINK</div>
       <div class="linkrow"><i class="dot" :class="linkTone" /><b>{{ linkLabel }}</b></div>
-      <div class="s">{{ openChunks }}/{{ chunkStates.length }} streams &middot; {{ age }}</div>
+      <div class="s">{{ tagCount ? `live \u00b7 ${tagCount} tags \u00b7 ` : '' }}{{ age }}</div>
+      <div v-if="historyHealth === 'unavailable'" class="s note" role="status">History/alarms unavailable &mdash; gateway trial may have expired</div>
     </div>
 
     <button class="toggle" :class="{ on: legend }" :aria-pressed="legend" @click="$emit('update:legend', !legend)">LEGEND</button>
@@ -143,6 +144,7 @@ const age = computed(() => (Number.isFinite(dataAgeS.value) ? (dataAgeS.value < 
 .v .u { color: var(--fg-2); font-size: var(--text-sm); font-weight: 400; }
 .v.hot { color: var(--alarm); }
 .s { color: var(--fg-2); font-size: var(--text-xs); white-space: nowrap; }
+.s.note { color: var(--warn); }
 .meter { height: 4px; border-radius: 2px; background: var(--bg-3); overflow: hidden; }
 .meter i { display: block; height: 100%; background: var(--accent); transform-origin: left; transition: transform var(--dur-slow) var(--ease-out); }
 .swatch { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 8px; vertical-align: 1px; transition: background var(--dur-scene) linear; }

@@ -1,5 +1,5 @@
-import { readTags, sseUrl, subscribe, type ConnectionState, type Subscription, type TagUpdate } from '@ignite/client';
-import { PROVIDER, TAG_NAMES, TAG_PATHS, type TagName } from './paths';
+import { probeHistory, subscribe, type BatchInfo, type ConnectionState, type HistoryHealth, type TagUpdate } from '@ignite/client';
+import { PROVIDER, TAG_NAMES, type TagName } from './paths';
 
 /**
  * Mutable tag store: a plain module, no framework. The scene reads it inside useFrame (no React
@@ -18,11 +18,15 @@ export interface ConnectionInfo {
   state: ConnectionState;
   /** Date.now() of the last SSE batch (0 before the first). */
   lastEventAt: number;
-  /** True once the initial /tags/read finished (successfully or not). */
+  /** True once the first snapshot has been applied. */
   loaded: boolean;
+  /** Tags the server confirmed for this connection (`event: subscribed`); 0 until then. */
+  tagCount: number;
+  /** Historian probe: 'unavailable' when history answers with nothing but nulls (gateway trial expired). */
+  history: HistoryHealth;
 }
 
-let conn: ConnectionInfo = { state: 'connecting', lastEventAt: 0, loaded: false };
+let conn: ConnectionInfo = { state: 'connecting', lastEventAt: 0, loaded: false, tagCount: 0, history: 'unknown' };
 const connListeners = new Set<Listener>();
 
 function emitConn(patch: Partial<ConnectionInfo>): void {
@@ -95,96 +99,47 @@ export function clockAge(): number {
   return (performance.now() - clockSampleAt) / 1000;
 }
 
-// The gateway sends every tag's current value when a stream opens. Values arriving in that first
-// burst are "initial", not events: sinceChange() reports Infinity for them (a page loaded mid-flight
-// must not replay the stage separation).
-const INITIAL_BURST_MS = 2500;
-let burstEndsAt = 0;
+// The gateway sends every tag's current value when a stream opens (the snapshot). Those values are
+// "initial", not events: sinceChange() reports Infinity for the first snapshot (a page loaded mid-flight
+// must not replay the stage separation). Snapshots after a reconnect are real changes and keep their time.
+let firstSnapshotDone = false;
 
-function onBatch(batch: TagUpdate[]): void {
+function onBatch(batch: TagUpdate[], info: BatchInfo): void {
   const now = performance.now();
-  if (burstEndsAt === 0) burstEndsAt = now + INITIAL_BURST_MS;
-  const at = now < burstEndsAt ? -Infinity : now;
+  const at = info.snapshot && !firstSnapshotDone ? -Infinity : now;
+  if (info.snapshot) firstSnapshotDone = true;
   for (const u of batch) {
     const name = toName(u.path);
     if (!name) continue;
     if (name === 'Launch/_Sim_/State/TMinusExact') clockSampleAt = now;
     apply(name, u.value, at);
   }
-  emitConn({ lastEventAt: Date.now() });
+  emitConn({ lastEventAt: Date.now(), loaded: true });
 }
 
-/** Split a path list so that each SSE URL stays under the limit (Jetty rejects request lines > 8 KiB). */
-export function splitPaths(paths: string[], limit = 6500): string[][] {
-  if (sseUrl(paths).length <= limit) return [paths];
-  const mid = Math.ceil(paths.length / 2);
-  return [...splitPaths(paths.slice(0, mid), limit), ...splitPaths(paths.slice(mid), limit)];
-}
+/** One folder subscription covers every Launch tag (one SSE connection per page). */
+export const LIVE_PATTERN = `${PROVIDER}Launch/**`;
 
-async function initialRead(): Promise<void> {
-  const ingest = (tags: { path: string; value: unknown }[]) => {
-    for (const t of tags) {
-      const name = toName(t.path);
-      if (name && !values.has(name)) apply(name, t.value, -Infinity);
-    }
-  };
-  try {
-    ingest((await readTags(TAG_PATHS)).tags);
-  } catch {
-    // The URL may be too long for one request; retry in chunks.
-    for (let i = 0; i < TAG_PATHS.length; i += 40) {
-      try {
-        ingest((await readTags(TAG_PATHS.slice(i, i + 40))).tags);
-      } catch {
-        /* the SSE stream will fill in what is missing */
-      }
-    }
-  }
-}
-
-/** Re-read after a reconnect so changes missed while the stream was down are not lost. */
-async function resync(): Promise<void> {
-  try {
-    const now = performance.now();
-    for (const t of (await readTags(TAG_PATHS)).tags) {
-      const name = toName(t.path);
-      if (name) apply(name, t.value, now);
-    }
-  } catch {
-    /* next event will correct it */
-  }
-}
+/** Historized tag that moves whenever the sim runs; its history going all-null means the historian stopped. */
+const HISTORY_PROBE_TAG = `${PROVIDER}Launch/Propellant/LOX/TankLevelPct`;
+const HISTORY_PROBE_MS = 60_000;
 
 let started = false;
 
-/** Start the live feed once: initial read, then one coalesced subscription over every Launch tag. */
+/** Start the live feed once: a single SSE connection on `[default]Launch/**` (the server sends the snapshot). */
 export function startLive(): void {
   if (started) return;
   started = true;
-  const parts = splitPaths(TAG_PATHS);
-  const states: ConnectionState[] = parts.map(() => 'connecting');
-  let everOpen = false;
-  const subs: Subscription[] = parts.map((paths, i) =>
-    subscribe(paths, onBatch, {
-      onState: (s) => {
-        states[i] = s;
-        const agg: ConnectionState = states.every((x) => x === 'open')
-          ? 'open'
-          : states.some((x) => x === 'closed')
-            ? 'closed'
-            : 'connecting';
-        const wasOpen = conn.state === 'open';
-        emitConn({ state: agg });
-        if (agg === 'open' && !wasOpen) {
-          if (everOpen) void resync();
-          everOpen = true;
-        }
-      },
-    }),
-  );
-  void initialRead().finally(() => emitConn({ loaded: true }));
-  // Keep the subscriptions referenced for the lifetime of the page (no teardown path: single-page app).
-  void subs;
+  subscribe([LIVE_PATTERN], onBatch, {
+    onState: (state) => emitConn({ state }),
+    onSubscribed: (tagCount) => emitConn({ tagCount }),
+  });
+  const probe = () =>
+    void probeHistory(HISTORY_PROBE_TAG).then((history) => {
+      if (history !== 'unknown' && history !== conn.history) emitConn({ history });
+    });
+  probe();
+  setInterval(probe, HISTORY_PROBE_MS);
 }
 
 /** Dev tool (exposed on window in dev builds only): set tag values without a gateway. `fresh` marks them as just changed. */

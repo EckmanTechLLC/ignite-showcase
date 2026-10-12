@@ -1,6 +1,6 @@
-import { computed, reactive, shallowRef, type ComputedRef, type ShallowRef } from 'vue';
-import { readTags, subscribe, type ConnectionState, type Subscription, type TagUpdate } from '@ignite/client';
-import { LIVE_CHUNKS, PREFIX, STATIC_CHUNKS } from './paths';
+import { computed, shallowRef, type ComputedRef, type ShallowRef } from 'vue';
+import { probeHistory, subscribe, type ConnectionState, type HistoryHealth, type Subscription, type TagUpdate } from '@ignite/client';
+import { LIVE_PATTERN, PREFIX } from './paths';
 
 /** A tag value as the gateway delivers it. */
 export type TagValue = string | number | boolean | null;
@@ -43,16 +43,15 @@ const short = (full: string) => (full.startsWith(PREFIX) ? full.slice(PREFIX.len
 
 // --- connection / data age ---------------------------------------------------------------
 
-export const chunkStates = reactive<ConnectionState[]>(LIVE_CHUNKS.map(() => 'connecting'));
+/** Connection state of the single SSE stream. */
+export const connection = shallowRef<ConnectionState>('connecting');
+/** Tags the server confirmed for the stream (`event: subscribed`); 0 until then. */
+export const tagCount = shallowRef(0);
+/** Historian probe: 'unavailable' when history answers with nothing but nulls (gateway trial expired). */
+export const historyHealth = shallowRef<HistoryHealth>('unknown');
 export const wallNow = shallowRef(Date.now());
 export const lastDataAt = shallowRef(0);
 
-const RANK: Record<ConnectionState, number> = { open: 0, connecting: 1, closed: 2 };
-/** Worst state across all chunks. */
-export const connection = computed<ConnectionState>(() =>
-  chunkStates.reduce<ConnectionState>((w, s) => (RANK[s] > RANK[w] ? s : w), 'open'),
-);
-export const openChunks = computed(() => chunkStates.filter((s) => s === 'open').length);
 /** Seconds since the last tag update was applied (Infinity before the first). */
 export const dataAgeS = computed(() => (lastDataAt.value ? Math.max(0, (wallNow.value - lastDataAt.value) / 1000) : Infinity));
 
@@ -66,51 +65,34 @@ function apply(updates: TagUpdate[]): void {
   lastDataAt.value = Date.now();
 }
 
-async function seed(chunk: readonly string[]): Promise<void> {
-  try {
-    const r = await readTags(chunk.map((p) => PREFIX + p));
-    for (const t of r.tags) {
-      const ref = tagRef(short(t.path));
-      // SSE may already have delivered something newer; only fill gaps.
-      if (ref.value === null) ref.value = t.value as TagValue;
-    }
-    if (!lastDataAt.value) lastDataAt.value = Date.now();
-  } catch {
-    /* the SSE snapshot fills the store regardless */
-  }
-}
+/** Historized tag that moves whenever the sim runs; its history going all-null means the historian stopped. */
+const HISTORY_PROBE_TAG = PREFIX + 'Hall/TotalFacilityKW';
+const HISTORY_PROBE_MS = 60_000;
 
-async function refreshStatic(): Promise<void> {
-  await Promise.all(
-    STATIC_CHUNKS.map(async (chunk) => {
-      try {
-        const r = await readTags(chunk.map((p) => PREFIX + p));
-        for (const t of r.tags) tagRef(short(t.path)).value = t.value as TagValue;
-      } catch {
-        /* retried on the next refresh */
-      }
-    }),
-  );
+async function probe(): Promise<void> {
+  const h = await probeHistory(HISTORY_PROBE_TAG);
+  if (h !== 'unknown') historyHealth.value = h;
 }
 
 let started = false;
-const subs: Subscription[] = [];
+let sub: Subscription | null = null;
 let timers: number[] = [];
 
-/** Seed every chunk with one /tags/read, open one SSE connection per chunk, poll the constants slowly. */
+/** One SSE connection on `[default]DC/**`: the server expands the folder and sends every value as a snapshot. */
 export function startLive(): void {
   if (started) return;
   started = true;
-  LIVE_CHUNKS.forEach((chunk, i) => {
-    void seed(chunk);
-    subs.push(subscribe(chunk.map((p) => PREFIX + p), apply, { onState: (s) => (chunkStates[i] = s) }));
+  sub = subscribe([LIVE_PATTERN], apply, {
+    onState: (s) => (connection.value = s),
+    onSubscribed: (n) => (tagCount.value = n),
   });
-  void refreshStatic();
-  timers = [window.setInterval(() => (wallNow.value = Date.now()), 500), window.setInterval(refreshStatic, 30_000)];
+  void probe();
+  timers = [window.setInterval(() => (wallNow.value = Date.now()), 500), window.setInterval(probe, HISTORY_PROBE_MS)];
 }
 
 export function stopLive(): void {
-  subs.splice(0).forEach((s) => s.close());
+  sub?.close();
+  sub = null;
   timers.forEach((t) => clearInterval(t));
   timers = [];
   started = false;

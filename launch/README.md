@@ -35,10 +35,10 @@ Every Ignite route and where the UI uses it.
 
 | Route | Tier | Used in |
 |---|---|---|
-| `GET /tags/read` | key | `live/store.ts`: initial read of all 110 tags, resync after an SSE reconnect |
-| `GET /sse` (tag change stream) | key | `live/store.ts`: one coalesced subscription drives the scene, HUD and charts' live samples |
+| `GET /tags/read` | key | n/a: the SSE stream opens with a snapshot of every subscribed tag, so there is no seed read and no resync after a reconnect |
+| `GET /sse` (tag change stream) | key | `live/store.ts`: one connection on the folder pattern `[default]Launch/**` (111 tags) drives the scene, HUD and charts' live samples |
 | `GET /tags/browse` | key | n/a: the tag list is generated from `sim/launch/tags.json` at build time (`scripts/gen-paths.mjs`), so there is nothing to discover at run time; client wrapper and curl matrix cover it |
-| `GET /tags/history` | key | Telemetry panel (`overlays/telemetry/feed.ts`): 60-point back-fill per channel on open, window or channel change |
+| `GET /tags/history` | key | Health probe (`live/store.ts`, 6 rows of `LOX/TankLevelPct` over 10 min, every 60 s); Telemetry panel (`overlays/telemetry/feed.ts`): 60-point back-fill per channel on open, window or channel change |
 | `POST /tags/write` | write | n/a: all state changes go through the `launch` library so the sequencer validates them; the curl matrix checks that a Viewer gets 403 |
 | `GET /alarms/status` | key | Alarm board and HUD badge (`overlays/alarms/store.ts`), polled every 3 s, paused while the tab is hidden |
 | `GET /alarms/history` | key | n/a: the board is a live view; cleared-unacknowledged alarms stay in status until acknowledged, so a journal adds nothing here |
@@ -53,6 +53,12 @@ Every Ignite route and where the UI uses it.
 | `POST /db/query` (named queries) | key | n/a: the lab has no database connection, so there is no named query to run (ADR-005 allows the panel to be absent) |
 
 The alarm feed returns every alarm on the gateway; the board keeps only `Launch/` sources and drops zero-length Cleared/Acknowledged events (no `activeTime`) that a tag load leaves behind.
+
+## Live connection
+
+One SSE connection per page: `GET /sse?paths=[default]Launch/**`. The gateway expands the folder once when the stream opens, sends every tag's current value (the snapshot, applied as a single batch), then `event: subscribed` with the tag count, then changes. `paths.ts` is generated from the tag model and used only for names, units and types. Before its 20-minute connection cap the gateway sends `event: reconnect`; the client reopens immediately (a fresh snapshot follows, so nothing is missed). Limits: at most 64 live streams per gateway (beyond that HTTP 503 `{"error":"too many live connections"}`), at most 1 000 tags per subscription, and tags added to the folder after the stream opened are picked up on the next reconnect.
+
+The Link chip in the top bar shows `Live · 111 tags · data age 0.3 s`, `Stale` (no batch for 10 s), `Connecting` or `Reconnecting`. It also shows "History/alarms unavailable - gateway trial may have expired" when `/tags/history` for a moving tag (`Propellant/LOX/TankLevelPct`, 10 min, 6 rows) comes back with every value null: with an expired 2-hour trial the historian and alarms stop while tags keep moving.
 
 ## Telemetry
 

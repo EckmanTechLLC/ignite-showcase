@@ -24,10 +24,19 @@ export class FakeEventSource {
   onmessage: ((e: { data: string }) => void) | null = null;
   onerror: (() => void) | null = null;
   closed = false;
+  private listeners = new Map<string, Array<(e: { data: string }) => void>>();
   constructor(public url: string, public init?: unknown) {
     FakeEventSource.instances.push(this);
   }
   close() { this.closed = true; }
+  addEventListener(name: string, fn: (e: { data: string }) => void) {
+    this.listeners.set(name, [...(this.listeners.get(name) ?? []), fn]);
+  }
+  /** Deliver a named SSE event (`event: <name>`). */
+  emitNamed(name: string, msg: unknown) {
+    const data = typeof msg === 'string' ? msg : JSON.stringify(msg);
+    for (const fn of this.listeners.get(name) ?? []) fn({ data });
+  }
   emit(msg: unknown) { this.onmessage?.({ data: typeof msg === 'string' ? msg : JSON.stringify(msg) }); }
   open() { this.onopen?.(); }
   fail() { this.onerror?.(); }

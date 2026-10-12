@@ -17,9 +17,12 @@ export {
   sseUrl,
   type ConnectionState,
   type TagUpdate,
+  SNAPSHOT_TIMEOUT_MS,
+  type BatchInfo,
   type SubscribeOptions,
   type Subscription,
 } from './sse.js';
+export { classifyHistory, probeHistory, type HistoryHealth } from './health.js';
 export * from './api/tags.js';
 export * from './api/alarms.js';
 export * from './api/scripts.js';

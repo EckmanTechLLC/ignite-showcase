@@ -48,25 +48,33 @@ const nextHold = (): string => {
   return remaining <= 0 ? `${fmtTShort(at)} now` : `${fmtTShort(at)} in ${fmtDuration(remaining)}`;
 };
 
+/** Seconds without any SSE batch before an open stream is called stale (the sim publishes at >= 1 Hz). */
+const STALE_AFTER_S = 10;
+
 function Connection() {
   const c = useConnection();
-  const label = c.state === 'open' ? 'Live' : c.state === 'connecting' ? 'Connecting' : 'Reconnecting';
-  const age = useMemo(
+  const text = useMemo(
     () => () => {
-      if (c.state !== 'open' || c.lastEventAt === 0) return '--';
-      return `${((Date.now() - c.lastEventAt) / 1000).toFixed(1)} s`;
+      if (c.state === 'connecting') return 'Connecting';
+      if (c.state === 'closed') return 'Reconnecting';
+      const ageS = c.lastEventAt === 0 ? Infinity : (Date.now() - c.lastEventAt) / 1000;
+      const head = ageS > STALE_AFTER_S ? 'Stale' : c.tagCount > 0 ? `Live · ${c.tagCount} tags` : 'Live';
+      return `${head} · data age ${Number.isFinite(ageS) ? ageS.toFixed(1) + ' s' : '--'}`;
     },
-    [c.state, c.lastEventAt],
+    [c.state, c.lastEventAt, c.tagCount],
   );
   return (
     <div className="stat conn">
       <span className="stat-l">Link</span>
       <span className="stat-v">
         <i className={`dot ${c.state}`} />
-        {label}
-        <span className="muted"> · data age </span>
-        <LiveText get={age} intervalMs={250} className="mono" />
+        <LiveText get={text} intervalMs={250} className="mono" />
       </span>
+      {c.history === 'unavailable' && (
+        <span className="stat-n" role="status">
+          History/alarms unavailable &mdash; gateway trial may have expired
+        </span>
+      )}
     </div>
   );
 }

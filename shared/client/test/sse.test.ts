@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { configureEnv } from '../src/env.js';
 import { setToken } from '../src/http.js';
-import { backoffDelay, subscribe, type ConnectionState } from '../src/sse.js';
+import { backoffDelay, SNAPSHOT_TIMEOUT_MS, subscribe, type ConnectionState } from '../src/sse.js';
 import { FakeEventSource, MemoryStorage } from './helpers.js';
 
 const ev = (path: string, value: unknown) => ({ type: 'tagChange', path, value, quality: 'Good', timestamp: 't' });
@@ -37,6 +37,7 @@ describe('sse', () => {
     const s = subscribe(['a', 'b'], onBatch);
     const es = FakeEventSource.instances[0];
     es.open();
+    es.emitNamed('subscribed', { type: 'subscribed', count: 2 }); // end the (empty) snapshot phase
     for (let i = 0; i < 50; i++) es.emit(ev('a', i));
     es.emit(ev('b', 'x'));
     es.emit({ type: 'other', path: 'z' });
@@ -92,11 +93,11 @@ describe('sse', () => {
     expect(s.state).toBe('closed');
   });
 
-  it('reconnects proactively before the 30 minute cap without closing state', () => {
+  it('reconnects proactively before the 20 minute cap without closing state', () => {
     const states: ConnectionState[] = [];
     const s = subscribe(['a'], () => {}, { onState: (st) => states.push(st) });
     FakeEventSource.instances[0].open();
-    vi.advanceTimersByTime(29 * 60_000);
+    vi.advanceTimersByTime(19 * 60_000);
     expect(FakeEventSource.instances).toHaveLength(2);
     expect(FakeEventSource.instances[0].closed).toBe(true);
     expect(states).not.toContain('closed');
@@ -113,5 +114,75 @@ describe('sse', () => {
     expect(onBatch).not.toHaveBeenCalled();
     expect(es.closed).toBe(true);
     expect(FakeEventSource.instances).toHaveLength(1);
+  });
+
+  it('sends folder patterns verbatim in the paths param', () => {
+    const s = subscribe(['[default]Launch/**', '[default]DC/Hall/*'], () => {});
+    const u = new URL(FakeEventSource.instances[0].url);
+    expect(u.searchParams.get('paths')).toBe('[default]Launch/**,[default]DC/Hall/*');
+    s.close();
+  });
+
+  it('delivers the snapshot as one batch when subscribed arrives, then reports the count', () => {
+    const batches: Array<{ n: number; snapshot: boolean }> = [];
+    const counts: number[] = [];
+    const s = subscribe(['[default]X/**'], (b, info) => batches.push({ n: b.length, snapshot: info.snapshot }), {
+      onSubscribed: (c) => counts.push(c),
+    });
+    const es = FakeEventSource.instances[0];
+    es.open();
+    for (let i = 0; i < 30; i++) es.emit(ev(`t${i}`, i));
+    vi.advanceTimersByTime(100); // no frame delivery while the snapshot is being collected
+    expect(batches).toEqual([]);
+    es.emitNamed('subscribed', { type: 'subscribed', count: 30 });
+    expect(batches).toEqual([{ n: 30, snapshot: true }]);
+    expect(counts).toEqual([30]);
+    es.emit(ev('t1', 99));
+    vi.advanceTimersByTime(16);
+    expect(batches[1]).toEqual({ n: 1, snapshot: false });
+    s.close();
+  });
+
+  it('delivers a snapshot after a timeout when the server never sends subscribed', () => {
+    const onBatch = vi.fn();
+    const s = subscribe(['a'], onBatch);
+    const es = FakeEventSource.instances[0];
+    es.open();
+    es.emit(ev('a', 1));
+    vi.advanceTimersByTime(SNAPSHOT_TIMEOUT_MS - 1);
+    expect(onBatch).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(1);
+    expect(onBatch).toHaveBeenCalledTimes(1);
+    expect(onBatch.mock.calls[0][1]).toEqual({ snapshot: true });
+    s.close();
+  });
+
+  it('reconnects immediately on the reconnect event, without backoff or a closed state', () => {
+    const states: ConnectionState[] = [];
+    const s = subscribe(['a'], () => {}, { onState: (st) => states.push(st) });
+    const first = FakeEventSource.instances[0];
+    first.open();
+    first.emitNamed('reconnect', { type: 'reconnect' });
+    expect(FakeEventSource.instances).toHaveLength(2);
+    expect(first.closed).toBe(true);
+    expect(states).not.toContain('closed');
+    // the new connection starts a fresh snapshot
+    const second = FakeEventSource.instances[1];
+    second.open();
+    expect(s.state).toBe('open');
+    s.close();
+  });
+
+  it('ignores a malformed subscribed payload but still ends the snapshot', () => {
+    const onBatch = vi.fn();
+    const onSubscribed = vi.fn();
+    const s = subscribe(['a'], onBatch, { onSubscribed });
+    const es = FakeEventSource.instances[0];
+    es.open();
+    es.emit(ev('a', 1));
+    es.emitNamed('subscribed', 'not json');
+    expect(onBatch).toHaveBeenCalledTimes(1);
+    expect(onSubscribed).not.toHaveBeenCalled();
+    s.close();
   });
 });

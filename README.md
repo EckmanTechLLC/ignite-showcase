@@ -8,7 +8,7 @@ Each demo is a single full-viewport control-room screen on a different front-end
 
 | Path | What |
 |---|---|
-| `shared/client/` | `@ignite/client` — TypeScript, zero runtime dependencies: env bootstrap, REST wrappers, SSE with per-frame batching and reconnect |
+| `shared/client/` | `@ignite/client` — TypeScript, zero runtime dependencies: env bootstrap, REST wrappers, SSE (folder subscriptions, initial snapshot, per-frame batching, reconnect), history probe |
 | `shared/theme/` | CSS tokens, motion rules and bundled fonts (Inter, JetBrains Mono) |
 | `launch/` | Demo 1 — Launch Operations: React 18, Vite, React Three Fiber, ECharts |
 | `datacenter/` | Demo 2 — Data Center: Vue 3, Vite, animated SVG |
@@ -24,7 +24,7 @@ Each demo is a single full-viewport control-room screen on a different front-end
 
 ## Local development
 
-Copy `.env.example` in a demo folder to `.env.local`, fill in the gateway URL, site and (read-tier) API key, then `npm run dev -w @ignite/launch` (or `@ignite/datacenter`). In production the gateway injects `window.__IGNITE_ENV__`; nothing else is configuration.
+Copy `.env.example` in a demo folder to `.env.development.local` (git-ignored; `vite build` never reads it, unlike `.env.local`, so the key cannot reach `dist/`), fill in the gateway URL, site and (read-tier) API key, then `npm run dev -w @ignite/launch` (or `@ignite/datacenter`). In production the gateway injects `window.__IGNITE_ENV__`; nothing else is configuration.
 
 ## Deploy
 
