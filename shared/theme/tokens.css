@@ -98,3 +98,6 @@ html, body, #app, #root {
 }
 
 .mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+
+/* Keyboard focus: a visible ring on every control, never for pointer clicks. */
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
