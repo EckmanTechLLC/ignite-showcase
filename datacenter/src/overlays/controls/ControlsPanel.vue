@@ -117,6 +117,7 @@ button { font: 600 var(--text-xs) var(--font-mono); letter-spacing: 0.04em; colo
 button:hover:not(:disabled) { background: var(--accent-dim); }
 button:disabled { color: var(--fg-2); border-color: var(--line-strong); cursor: not-allowed; }
 button.danger { color: var(--alarm); border-color: var(--alarm); }
+button.danger:disabled { color: var(--fg-2); border-color: var(--line-strong); }
 button.danger:hover:not(:disabled) { background: color-mix(in srgb, var(--alarm) 25%, transparent); }
 .pick { display: inline-flex; align-items: center; gap: 6px; color: var(--fg-1); font-size: var(--text-xs); }
 select { font: 500 var(--text-xs) var(--font-mono); background: var(--bg-2); color: var(--fg-0); border: 1px solid var(--line-strong); border-radius: var(--radius-2); padding: 4px 6px; }
