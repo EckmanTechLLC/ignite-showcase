@@ -4,8 +4,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "vue-tsc --noEmit && vite build",
+    "gen": "node scripts/gen-paths.mjs",
+    "dev": "npm run gen && vite",
+    "build": "npm run gen && vue-tsc --noEmit && vite build",
     "preview": "vite preview"
   },
   "dependencies": {

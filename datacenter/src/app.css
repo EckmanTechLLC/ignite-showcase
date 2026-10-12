@@ -1,27 +1,14 @@
-:root { --accent: #22d3ee; }
-
-.stage { position: fixed; inset: 0; display: grid; place-items: center; padding-top: 3rem; }
-.stage svg { width: 100%; height: 100%; }
-
-.hud {
-  position: fixed;
-  left: 0;
-  right: 0;
-  top: 0;
-  display: flex;
-  gap: var(--space-5);
-  align-items: center;
-  padding: var(--space-3) var(--space-5);
-  background: linear-gradient(to bottom, color-mix(in srgb, var(--bg-0) 92%, transparent), transparent);
-  border-bottom: 1px solid var(--line);
-  font-size: var(--text-sm);
-  color: var(--fg-1);
-  pointer-events: none;
+/* Data Center: accent is cyan (Launch uses orange). Feed A / B colours are shared by every conductor and card. */
+:root {
+  --accent: #22d3ee;
+  --feed-a: #22d3ee;
+  --feed-b: #c084fc;
+  --hud-h: 100px;
 }
-.hud b { color: var(--fg-0); font-weight: 500; }
-.hud .title { color: var(--accent); font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
-.hud .value { color: var(--fg-0); font-size: var(--text-md); }
-.dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: var(--space-2); background: var(--fg-2); }
-.dot.open { background: var(--ok); }
-.dot.connecting { background: var(--warn); }
-.dot.closed { background: var(--alarm); }
+
+body { background: radial-gradient(ellipse at 50% 40%, var(--bg-1), var(--bg-0) 70%); }
+.stage { position: fixed; left: 0; right: 0; bottom: 0; top: var(--hud-h); }
+
+@media (prefers-reduced-motion: reduce) {
+  .stage * { animation: none !important; }
+}
