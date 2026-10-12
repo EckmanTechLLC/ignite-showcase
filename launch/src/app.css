@@ -246,7 +246,7 @@ dd.warnv .val b { color: var(--warn); }
 .tier-Operator { color: var(--info); border-color: color-mix(in srgb, var(--info) 60%, transparent); }
 .tier-Director { color: var(--accent); border-color: var(--accent); }
 
-.ovl-stack { position: fixed; z-index: 3; top: 118px; right: var(--space-3); bottom: 178px; display: flex; flex-direction: row-reverse; gap: var(--space-3); align-items: flex-start; pointer-events: none; max-width: calc(100vw - 24px); }
+.ovl-stack { position: fixed; z-index: 3; top: 118px; right: var(--space-3); bottom: var(--strip-h, 178px); display: flex; flex-direction: row-reverse; gap: var(--space-3); align-items: flex-start; pointer-events: none; max-width: calc(100vw - 24px); }
 .ovl {
   pointer-events: auto; width: 360px; max-height: 100%; display: flex; flex-direction: column; color: var(--fg-1); font-size: var(--text-sm);
   background: color-mix(in srgb, var(--bg-1) 97%, transparent); backdrop-filter: blur(6px); border: 1px solid var(--panel-line); border-radius: var(--radius-3);
@@ -323,7 +323,7 @@ dd.warnv .val b { color: var(--warn); }
 .charts { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-2); }
 .chart { height: 150px; min-width: 0; background: color-mix(in srgb, var(--bg-2) 60%, transparent); border-radius: var(--radius-2); }
 
-.toasts { position: fixed; z-index: 5; left: 50%; bottom: 190px; transform: translateX(-50%); display: flex; flex-direction: column; gap: 6px; align-items: center; pointer-events: none; }
+.toasts { position: fixed; z-index: 5; left: 50%; bottom: calc(var(--strip-h, 178px) + 12px); transform: translateX(-50%); display: flex; flex-direction: column; gap: 6px; align-items: center; pointer-events: none; }
 .toast { padding: 6px 14px; border-radius: var(--radius-3); background: var(--bg-2); border: 1px solid var(--line-strong); color: var(--fg-0); font-size: var(--text-sm); animation: slidein 160ms ease-out; }
 .toast.ok { border-color: var(--ok); }
 .toast.warn { border-color: var(--warn); }
@@ -345,3 +345,13 @@ dd.warnv .val b { color: var(--warn); }
 .help-keys > div { display: contents; }
 .help-keys dt { text-align: right; } .help-keys dd { margin: 0; color: var(--fg-1); }
 .help-keys kbd { font-family: var(--font-mono); font-size: var(--text-xs); padding: 0 4px; border: 1px solid var(--line-strong); border-radius: var(--radius-1); color: var(--fg-1); }
+
+/* Laptop widths: a smaller clock keeps the brand, clock and link block from colliding. */
+@media (max-width: 1500px) {
+  .topbar { gap: var(--space-3); padding: var(--space-2) var(--space-3); }
+  .clock { font-size: var(--text-xl); min-width: 10ch; }
+  .clock-block { gap: var(--space-3); }
+  .phase-block { min-width: 140px; }
+}
+/* The camera dock steps left of any open panel (--ovl-w is set by OverlayHost) instead of hiding under it. */
+.dock { margin-right: var(--ovl-w, 0px); transition: margin-right var(--dur-base) var(--ease-out); }

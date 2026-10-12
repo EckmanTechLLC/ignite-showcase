@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect } from 'react';
+import { lazy, Suspense, useEffect, useRef } from 'react';
 import { AlarmBadge } from './alarms/AlarmBadge';
 import { AlarmBoard } from './alarms/AlarmBoard';
 import { startAlarms } from './alarms/store';
@@ -18,6 +18,34 @@ const KEYS: Record<string, PanelId> = { t: 'telemetry', a: 'alarms', c: 'control
 export function OverlayHost() {
   const open = usePanels();
   const toasts = useToasts();
+  const stack = useRef<HTMLElement>(null);
+  // Tell the camera dock how much room the open panels take (CSS variable on the root).
+  useEffect(() => {
+    const el = stack.current;
+    if (!el) return;
+    const set = () => document.documentElement.style.setProperty('--ovl-w', el.children.length ? `${Math.ceil(el.getBoundingClientRect().width)}px` : '0px');
+    set();
+    const ro = new ResizeObserver(set);
+    ro.observe(el);
+    return () => {
+      ro.disconnect();
+      document.documentElement.style.removeProperty('--ovl-w');
+    };
+  }, [open]);
+  // The bottom strip grows in flight; panels stop above it (--strip-h) rather than at a fixed offset.
+  useEffect(() => {
+    const strip = document.querySelector('footer.strip');
+    if (!strip) return;
+    const set = () => document.documentElement.style.setProperty('--strip-h', `${Math.ceil(window.innerHeight - strip.getBoundingClientRect().top + 8)}px`);
+    set();
+    const ro = new ResizeObserver(set);
+    ro.observe(strip);
+    window.addEventListener('resize', set);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener('resize', set);
+    };
+  }, []);
   useEffect(() => {
     startSession();
     if (new URLSearchParams(window.location.search).has('about')) togglePanel('help', true);
@@ -37,7 +65,7 @@ export function OverlayHost() {
   return (
     <>
       <ToolDock />
-      <aside className="ovl-stack" aria-label="Panels">
+      <aside ref={stack} className="ovl-stack" aria-label="Panels">
         {open.has('help') && (
           <Suspense fallback={null}>
             <Help />

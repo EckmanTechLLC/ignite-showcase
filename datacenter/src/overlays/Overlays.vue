@@ -67,7 +67,7 @@ watch(selection, (s) => {
 </template>
 
 <style scoped>
-.dock { position: fixed; z-index: 21; right: 0; top: calc(var(--hud-h) + var(--space-2)); width: 46px; display: flex; flex-direction: column; gap: 6px; align-items: stretch; }
+.dock { position: fixed; z-index: 21; right: 0; top: calc(var(--hud-h) + var(--space-2)); width: 56px; display: flex; flex-direction: column; gap: 6px; align-items: stretch; }
 .dock button { position: relative; display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 6px 0; background: var(--bg-1); border: 1px solid var(--line-strong); border-right: 0; border-radius: var(--radius-3) 0 0 var(--radius-3); color: var(--fg-1); cursor: pointer; }
 .dock button b { font-size: var(--text-md); color: var(--accent); }
 .dock button span { font-size: 9px; letter-spacing: 0.04em; }

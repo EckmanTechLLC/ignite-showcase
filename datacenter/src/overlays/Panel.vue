@@ -17,8 +17,8 @@ defineProps<{ title: string; hotkey: string }>();
 
 <style scoped>
 .panel {
-  position: fixed; z-index: 20; right: 52px; top: calc(var(--hud-h) + var(--space-2)); bottom: var(--space-2);
-  width: min(540px, calc(100vw - 72px)); display: flex; flex-direction: column;
+  position: fixed; z-index: 20; right: 62px; top: calc(var(--hud-h) + var(--space-2)); bottom: var(--space-2);
+  width: min(540px, calc(100vw - 82px)); display: flex; flex-direction: column;
   background: color-mix(in srgb, var(--bg-1) 94%, transparent); border: 1px solid var(--line-strong); border-radius: var(--radius-3);
   box-shadow: 0 12px 40px rgb(0 0 0 / 0.5); font-size: var(--text-sm); color: var(--fg-1);
 }

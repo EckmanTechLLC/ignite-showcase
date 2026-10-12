@@ -172,4 +172,20 @@ const age = computed(() => (Number.isFinite(dataAgeS.value) ? (dataAgeS.value < 
 .toggle { align-self: center; font: 600 var(--text-xs) var(--font-mono); letter-spacing: 0.1em; color: var(--fg-1); background: var(--bg-2); border: 1px solid var(--line-strong); border-radius: var(--radius-2); padding: 6px 12px; cursor: pointer; }
 .toggle.on { color: var(--accent); border-color: var(--accent); }
 .toggle:hover { background: var(--bg-3); }
+@media (max-width: 1500px) {
+  .hud { gap: var(--space-3); padding: 0 var(--space-3); }
+  .brand { padding-right: var(--space-3); gap: var(--space-2); }
+  .brand .sub, .logo { display: none; }
+  .title { white-space: nowrap; font-size: var(--text-sm); }
+  .tile, .mode, .link { min-width: 0; }
+  .gauge-tile { min-width: 112px; }
+  .spacer { flex: 0 0 0; }
+  .v { font-size: var(--text-lg); }
+  .v .u { font-size: var(--text-xs); }
+  .chips { gap: 4px; }
+  .chip { padding: 1px 5px; }
+  .badge { font-size: var(--text-sm); padding: 2px 8px; }
+  .toggle { padding: 6px 8px; }
+  .s.note { white-space: normal; max-width: 150px; }
+}
 </style>
