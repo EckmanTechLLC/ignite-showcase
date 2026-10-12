@@ -1,0 +1,11 @@
+node_modules/
+dist/
+.env
+.env.*
+!.env.example
+.deploy-worktree/
+*.tsbuildinfo
+.idea/
+.vscode/
+*.swp
+.DS_Store

@@ -1,0 +1,11 @@
+{
+  "name": "@ignite/theme",
+  "version": "0.1.0",
+  "description": "Ignite showcase design tokens, motion rules and bundled fonts",
+  "license": "MIT",
+  "private": true,
+  "exports": {
+    "./tokens.css": "./tokens.css",
+    "./motion.css": "./motion.css"
+  }
+}

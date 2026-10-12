@@ -1,0 +1,15 @@
+{
+  "name": "ignite-showcase",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Ignite showcase demos — any web stack, live Ignition data",
+  "license": "MIT",
+  "type": "module",
+  "engines": { "node": ">=20.19" },
+  "workspaces": ["shared/*", "launch", "datacenter"],
+  "scripts": {
+    "build": "npm run build -w @ignite/client && npm run build -w @ignite/launch && npm run build -w @ignite/datacenter",
+    "test": "npm run test -w @ignite/client",
+    "deploy": "node scripts/deploy.mjs"
+  }
+}
