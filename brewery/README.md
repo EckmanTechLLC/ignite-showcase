@@ -48,6 +48,18 @@ lazily after the HTML shell and HUD have painted.
 Copy `.env.example` to `.env.development.local` (git-ignored; never `.env.local`), then `npm run dev -w @ignite/brewery`.
 `npm run build` runs `tsc --noEmit` first.
 
+## Screenshots
+
+Headless Chrome, 1920x1080, live data (software-rendered, so only the look is representative).
+
+![Plant, mid-brew](../docs/screenshots/brewery-plant.png)
+![Batch overlay: ISA-88 phases, QA, genealogy](../docs/screenshots/brewery-batch-genealogy.png)
+![Line down: FILLER JAM banner, OEE tile, mode chip](../docs/screenshots/brewery-line-down.png)
+
+## Performance
+
+See `docs/perf.md` (Craft Brewery). The Pixi chunk (about 585 kB raw, 174 kB gz) and the ECharts chunk set (about 593 kB) are lazy; `?perf` plus `P` shows the readout. GPU fps is operator-reported.
+
 ## Feature matrix
 
 | Route | Tier | Used in |

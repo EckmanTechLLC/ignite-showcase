@@ -23,6 +23,12 @@ Each demo is a single full-viewport control-room screen on a different front-end
 
 ## Screenshots
 
+Demo 4, Craft Brewery (headless Chrome, 1920x1080, live data, software GL):
+
+![Craft Brewery plant, mid-brew](docs/screenshots/brewery-plant.png)
+![Batch overlay with ISA-88 phases, QA and genealogy](docs/screenshots/brewery-batch-genealogy.png)
+![Packaging line down: filler jam, OEE tile and HUD](docs/screenshots/brewery-line-down.png)
+
 Demo 3, Campus Microgrid (headless Chrome, 1920x1080, live data):
 
 ![Campus Microgrid, midday](docs/screenshots/microgrid-scene.png)

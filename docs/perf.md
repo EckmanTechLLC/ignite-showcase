@@ -175,3 +175,68 @@ Left alone: the diagram (its main thread is paint and layout of about 465 nodes;
 | Lighthouse accessibility at least 90 | Met: 100 |
 | No runtime calls to any host except the gateway | Met: `externalRequests` empty in every run |
 | Fonts bundled | Met (shared theme fonts) |
+
+## Craft Brewery (task-75)
+
+Solid 1.9 UI over a PixiJS 8 isometric plant (WebGL, about 280 DOM nodes, 270 to 320 sprites, 700 display objects, 908 tags in one subscription made of 12 folder patterns because the gateway caps a subscription at 1 000 and the model has 1 039). Same method as above: headless Chrome 147, **software raster (SwiftShader), no GPU on this box**, deployed page with `?perf`, 12 s warm-up then 45 s, live data, the sim at 60x with fermentation acceleration 8. fps and frame times are software-rendered and are **not** GPU results; **GPU fps is operator-reported** and the operator rows are pending. The page was measured after the a11y fix below (deploy 581dc79).
+
+### Results (software-rendered, CPU-side)
+
+| Metric | 1080p run 1 / 2 | 4K run 1 / 2 |
+|---|---|---|
+| fps (software GL) | 11.0 / 7.4 | 1.9 / 2.0 |
+| frame p50 / p95 (ms) | 84.6 / 164.4 and 126.8 / 236.7 | 521.9 / 788.5 and 500.6 / 680.4 |
+| main thread (ms per s) | 122 / 136 | 59 / 58 |
+| script (ms per s) | 63 / 73 | 29 / 28 |
+| style recalc / layout (ms per s) | 10 / 10 and 11 / 11 | 7 / 4 and 7 / 5 |
+| long tasks in 45 s (count / total ms, max) | 8 / 435 (65) and 7 / 419 (71) | 2 / 105 (53) and 3 / 168 (60) |
+| draw calls | 3 / 6 | 18 / 20 |
+| sprites / display objects | 273 / 670 and 314 / 713 | 324 / 719 and 307 / 699 |
+| DOM nodes | 295 / 296 | 298 / 281 |
+| SSE batches/s, updates/s | 1, 68 and 1, 76 | 1, 78 and 1, 75 |
+
+The main thread is idle most of the time (12 to 14 % busy at 1080p). The frame rate here is fill-rate bound in software: the whole scene is rasterised on the CPU by SwiftShader, and a 4K canvas has four times the pixels (2 fps). Static art (floors, pipes, vessel and machine bodies) is cached as textures, which is why the main thread stays this low; in task-73 a trivial one-rect Pixi canvas of the same size measured 11 to 12 fps on this box. Nothing here says what a GPU does; the operator should paste the `?perf` readout from a real machine.
+
+### Heap (leak check)
+
+Forced GC every 60 s, deployed page, 1080p, 25 minutes (about 1 460 s, started 19:01 UTC, crossing the gateway's 20 minute SSE cap). The site key was not rotated during the run.
+
+| Time (min) | 0 | 5 | 10 | 15 | 20 | 25 |
+|---|---|---|---|---|---|---|
+| Heap (MB) | 10.9 | 12.7 | 13.0 | 13.2 | 13.1 | 13.3 |
+
+Heap climbs from 10.9 to 13.0 MB over the first 10 minutes while the bounded buffers fill, then stays within 12.9 to 13.3 MB (+0.1 MB over minutes 15 to 25). DOM nodes 279 to 300, sprites 190 to 380 (they follow the particles), 0 console or page errors, one host only (the gateway). Updates were 40 to 78 per second on every sample but one: at minute 23 the sample read 0 updates/s and 0 batches (a reconnect gap, consistent with the 20-minute cap) and the next sample (minute 24) was back at 72/s, with no error. The gateway trial lapsed at 19:04:43 during the run; SSE and the sim continued. The run was on build 9750e89 (the h1/main change was deployed during it, but the open page did not reload).
+
+### Bundle (production build)
+
+- Entry JS 56.5 kB (18.6 kB gzip), CSS 28 kB. Everything else is lazy.
+- **Pixi chunks (lazy, loaded through `import('./scene')` after first paint): scene 318.3 kB (96.7 gz) + CanvasPool 112.3 + RenderTargetSystem 78.1 + browserAll 43.5 + init 14.8 + small ones, about 585 kB raw, 174 kB gzip.** The WebGL bundle is the cost of the plant; it is not referenced by `index.html`.
+- ECharts (loaded on the first chart, `T`): 592.8 kB raw across the shared runtime chunks plus the Trends chunk 17.6 kB.
+
+### Lighthouse (desktop preset, deployed page, software GL)
+
+| Run | Performance | Accessibility | Best practices | FCP | LCP | TBT |
+|---|---|---|---|---|---|---|
+| 5 runs (deploy 581dc79) | 52 / 55 / 55 / 57 / 60 | 100 (all) | 79 (all) | 1.1 s | 1.8 to 2.5 s | 1.4 to 2.9 s |
+
+Spread 52 to 60. Performance is below the 90 target, and this is the **WebGL bundle caveat**: the long tasks are Pixi initialising the WebGL context and building the scene (CanvasPool chunk 1.0 s, scene chunk 0.5 s of scripting, 7 long tasks of 52 to 571 ms), all of it executed under SwiftShader on a shared box; the unthrottled main thread blocks for 1.4 to 2.9 s in the first 3 s. The score comes from TBT only (FCP 1.1 s, LCP 1.8 s, CLS 0.01). Not changed: the possible fixes (a smaller renderer, deferring the first scene build, drawing less on the first frame) are redesigns, not clear wins, and task-69's microgrid showed this box swings the same page by 15 points between runs. A GPU machine will not show these long tasks; the operator report is pending. Best practices 79 is `is-on-https` and `redirects-http` only (lab gateway is plain HTTP); SEO 54 is `meta-description` and `is-crawlable` (an internal demo, not indexed).
+
+Accessibility: axe-core (wcag2a, wcag2aa, best-practice), deployed page, 1080p, in seven states (idle, B, T, A, C, L, ?). **Before**: idle, B, T, A, C, L each had `landmark-one-main`, `page-has-heading-one` and `region` (the plant `div` was outside any landmark); `?` had `region`. **After** (deploy 581dc79): 0 violations in all seven states. The logged-in state was not axe-tested. The overlays (panels, dock, toasts) had no violations before or after.
+
+### What changed because of the numbers
+
+| Change | Before | After |
+|---|---|---|
+| a11y: the plant sits in a `<main>` with an sr-only `h1` "Craft Brewery" (`App.tsx`, `app.css`) | 3 axe rules (6 states) plus 1 in `?` | 0 |
+
+No performance change was made: the main thread is not the limit, and the Lighthouse TBT is software-GL scene start-up.
+
+### ADR-005 section 7 and Amendment A2 status for the brewery
+
+| Target | Status |
+|---|---|
+| 60 fps / at least 55 fps at 1080p on an integrated GPU | **Unverified on a GPU.** Software raster here gives 7 to 11 fps at 1080p and 2 fps at 4K (fill-bound); operator to paste the `?perf` readout |
+| Lighthouse performance at least 90 | **Not met here** (52 to 60 in 5 runs); TBT from WebGL start-up under software GL, not claimed as met |
+| Lighthouse accessibility at least 90 | Met: 100 |
+| Pixi chunk lazy | Met: about 585 kB raw, 174 kB gzip, only after first paint |
+| Heap flat over 25 min including an SSE reconnect | Met: 13.0 to 13.3 MB over minutes 10 to 25 |
