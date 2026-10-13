@@ -110,3 +110,68 @@ Not performance, but changed in this task: `?` help/about overlay and `?about` i
 | No runtime calls to any host except the gateway | Met: zero non-gateway requests in every headless run (`externalRequests` empty) |
 | Fonts and assets bundled, licences recorded | Met (`docs/ASSETS.md` unchanged) |
 | Contrast of HUD text at least 4.5:1 | Met for tokens and for everything `axe` checks; the rack tiles in the data center put white text with a dark outline on the heat colours, which `axe` cannot evaluate |
+
+## Campus Microgrid (task-69)
+
+Svelte 5 single-line diagram (about 465 DOM nodes, 405 tags in one `[default]MG/**` subscription). Same method as above: headless Chrome 147, **software raster, no GPU on this box**, deployed page with `?perf`, 12 s warm-up then 45 s, live data, the sim at 120x. fps and frame times are software-rendered and are not GPU results; **GPU fps is operator-reported** (the operator rows below are pending).
+
+### Results (software-rendered, CPU-side)
+
+| Metric | 1080p run 1 / 2 | 4K run 1 / 2 | 1080p, Trends open before | 1080p, Trends open after |
+|---|---|---|---|---|
+| fps (software raster) | 59.6 / 59.1 | 35.6 / 34.5 | 50.7 | 55.8 / 58.3 |
+| frame p50 / p95 (ms) | 16.7 / 16.8 (both runs) | 25.9 / 50.0 and 27.8 / 51.9 | 16.7 / 40.8 | 16.7 / 27.8 and 16.7 / 16.8 |
+| main thread (ms per s) | 283 / 360 | 185 / 189 | 529 | 349 / 363 |
+| script (ms per s) | 23 / 29 | 17 / 18 | 188 | 49 / 50 |
+| style recalc (ms per s) | 41 / 52 | 26 / 26 | 45 | 41 / 34 |
+| layout (ms per s) | 39 / 52 | 27 / 27 | 47 | 41 / 39 |
+| long tasks (count / total ms) | 0 / 0 and 1 / 67 | 0 / 0 (both) | 3 / 252 (max 102) | 2 / 128 and 1 / 52 |
+| DOM nodes | 464 | 464 | 515 | 515 |
+| SSE batches/s, updates/s | 1.1, 163 and 1.0, 190 | 1.1, 185 and 1.0, 189 | | |
+
+The first four columns are one build (no rendering change was made for the diagram: flows are Web Animations from the start, 0 running animations under reduced motion, task-67). The 4K run is raster-bound in software (35 fps, p95 50 ms); the main thread is under 20 % busy. "Trends open" is the same page after pressing `T` (five ECharts charts, history already loaded); "before" is the deployed task-68 build measured on the deployed page, "after" is the task-69 build served through a local proxy to the same gateway (the numbers are therefore a small apples-to-oranges difference in transport only; each runs 45 s).
+
+### Heap (leak check)
+
+Forced GC every 60 s, deployed page, 1080p, 25 minutes (crosses the gateway's 20 minute SSE `reconnect`).
+
+| Time (min) | 0 | 5 | 10 | 15 | 20 | 25 |
+|---|---|---|---|---|---|---|
+| Heap (MB) | 2.1 | 2.3 | 2.5 | 2.6 | 2.6 | 2.7 |
+
+The heap climbs from 2.1 to 2.6 MB over the first 15 minutes while the bounded buffers fill (ticker tween, history probe, alarm list) and is then flat (+0.1 MB over minutes 15 to 25, across the reconnect at about minute 19).
+
+DOM nodes stayed at 467 to 482. The stream reconnected at about 19 minutes (the gateway's 20 minute cap) and updates resumed within a second (about 190 per second before and after; 0 console errors, 0 non-gateway requests). A first attempt at this run was discarded: I rotated the site API key 4 minutes into it, so the page reconnected with the old key, got a 401 and stopped receiving data. That is expected behaviour for a rotated key (reload picks up the new one), not a page fault.
+
+### Lighthouse (desktop preset, deployed page, software GL)
+
+| Run | Performance | Accessibility | Best practices | FCP | LCP | TBT |
+|---|---|---|---|---|---|---|
+| Before (task-68 build, deployed) | 98 | 100 | 79 | 0.6 s | 1.1 s | 70 ms |
+| After (deployed), 4 runs | 81 / 85 / 82 / 85 | 100 (all) | 79 (all) | 0.5 to 0.6 s | 1.0 to 1.3 s | 260 to 330 ms |
+| A/B, local copies of old and new build, interleaved | old 83 / 86, new 84 / 98 | 100 (all) | 100 (all, no HTTP) | 0.5 to 0.6 s | 1.0 to 1.3 s | old 340 / 260, new 310 / 70 ms |
+
+The performance score is bimodal on this shared, software-rendered box: runs land either at about 98 (TBT 70 ms) or at 81 to 86 (TBT 260 to 340 ms), for the old and the new build alike (the interleaved A/B above shows both builds in both modes), so the drop from 98 to 81 to 85 after deploy is not a code regression; the bundle is byte-identical in size (148.6 vs 148.7 kB) and the changes do not touch load. What the page does at load is mount about 465 SVG nodes and apply the 405-tag snapshot in one pass; the two fast runs (98) show it can finish inside 70 ms of blocking time.
+
+- Best practices 79 is `is-on-https` and `redirects-http` only (lab gateway is plain HTTP). SEO 54 is `meta-description` and `is-crawlable`: the page is an internal demo behind a gateway path, intentionally unindexed; not changed.
+- Accessibility: axe-core (wcag2a, wcag2aa, best-practice) on the deployed page in six states (idle, Trends, Alarms, Controls, Login, Help) at 1080p: **before** idle and Trends: `page-has-heading-one` (1), Trends: `scrollable-region-focusable` (1), Alarms: `color-contrast` (15 nodes: cleared alarm rows at 0.6 opacity gave 2.85:1 and 4.06:1), Help: `landmark-no-duplicate-banner` and `landmark-unique` (the dialog header was a banner); **after**: clean in all six states.
+- Experimental `label-content-name-mismatch` (not scored) lists the diagram's `role="button"` groups whose aria-label does not repeat their visible text; left alone.
+
+### What changed because of the numbers
+
+| Change | Before | After |
+|---|---|---|
+| Trends: redraw a chart only when a point was added or aged out (every 5 s) instead of every 500 ms poll (`Chart.svelte`) | 1080p with Trends open: script 188 ms/s, main thread 529 ms/s, p95 40.8 ms, 3 long tasks (252 ms) | script 49 to 50 ms/s, main thread 349 to 363 ms/s, p95 16.8 to 27.8 ms, 1 to 2 long tasks (52 to 128 ms) |
+| a11y: sr-only `h1`, dialog header no longer a banner, keyboard focus on the scrollable panel body, cleared alarm rows at 0.9 opacity | six axe violation rules (above) | 0 |
+
+Left alone: the diagram (its main thread is paint and layout of about 465 nodes; 60 fps in software at 1080p), ECharts bundle (lazy, about 556 kB, first loaded on `T`), the 4K frame rate (raster-bound).
+
+### ADR-005 section 7 and Amendment A1 status for the microgrid
+
+| Target | Status |
+|---|---|
+| 60 fps / at least 55 fps at 1080p on an integrated GPU | **Unverified on a GPU.** Software raster here gives 59 fps at 1080p and 35 fps at 4K; the operator should paste the `?perf` readout from a real machine |
+| Lighthouse performance at least 90 | **Met in 2 of 9 runs here** (two runs at 98; 81 to 86 otherwise). The spread is environmental (TBT 70 vs 260 to 340 ms for the same bundle). Not claimed as met |
+| Lighthouse accessibility at least 90 | Met: 100 |
+| No runtime calls to any host except the gateway | Met: `externalRequests` empty in every run |
+| Fonts bundled | Met (shared theme fonts) |
