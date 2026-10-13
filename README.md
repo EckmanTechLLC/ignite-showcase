@@ -20,6 +20,16 @@ Each demo is a single full-viewport control-room screen on a different front-end
 
 `main` holds source only. The `deploy` branch holds built output only (`launch/`, `datacenter/`, `microgrid/`); gateway site records point at it with `servePath=launch` / `servePath=datacenter` / `servePath=microgrid`.
 
+## Screenshots
+
+Demo 3, Campus Microgrid (headless Chrome, 1920x1080, live data):
+
+![Campus Microgrid, midday](docs/screenshots/microgrid-scene.png)
+![Trends panel](docs/screenshots/microgrid-trends.png)
+![Grid outage with the alarm board](docs/screenshots/microgrid-island-alarms.png)
+
+The other demos' screenshots are in `launch/README.md` and `datacenter/README.md`.
+
 ## Build
 
     npm install && npm run build
