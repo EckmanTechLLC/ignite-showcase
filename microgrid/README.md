@@ -20,11 +20,23 @@ alarms, dispatch and scenario controls, identity panel, audit) were added in tas
 
 ## Overlays (right dock; keys T / A / C / L, `Esc` closes help, then the selection, then the panel)
 
-- **Trends (T)**, `src/overlays/trends/`: Forecast vs actual PV, Forecast vs actual load, Grid import with the demand-limit and baseline-peak lines and the demand window shaded, BESS SOC with the tariff bands shaded, Cost today vs baseline. Windows: Today (the last 12 real minutes = 24 simulated hours) and 3 days (36 real minutes); `returnSize` 144. The x axis is in **simulated hours** (weekday on the 3-day view): history is stored against wall-clock time and mapped with the live `Time/DayIndex`, `Time/HourOfDay` and `_Sim_/SpeedFactor` tags, so a speed change or `set_hour` bends the older part of the window. Live values are appended once per history bucket (5 s) and the chart redraws at 2 Hz. Clicking an element in the diagram adds its charts on top: array (array AC/DC, the two inverters, six strings), BESS (SOC, kW, cell temperature), charger (kW and car SOC; SOC is not historized, so it fills live), building (kW, HVAC), plus EV bank, genset and utility. ECharts is a lazy chunk, loaded when the first chart mounts.
+- **Trends (T)**, `src/overlays/trends/`: Forecast vs actual PV, Forecast vs actual load, Grid import with the demand-limit and baseline-peak lines and the demand window shaded, BESS SOC with the tariff bands shaded, Cost today vs baseline. Windows: Today (the last 12 real minutes = 24 simulated hours) and 3 days (36 real minutes); `returnSize` 144. The x axis is in **simulated hours** (weekday on the 3-day view): history is stored against wall-clock time and mapped with the live `Time/DayIndex`, `Time/HourOfDay` and `_Sim_/SpeedFactor` tags, so a speed change or `set_hour` bends the older part of the window. Live values are appended once per history bucket (5 s) and a chart redraws only when a point was added or aged out (every 5 s), not at the 500 ms poll. Clicking an element in the diagram adds its charts on top: array (array AC/DC, the two inverters, six strings), BESS (SOC, kW, cell temperature), charger (kW and car SOC; SOC is not historized, so it fills live), building (kW, HVAC), plus EV bank, genset and utility. ECharts is a lazy chunk, loaded when the first chart mounts.
 - **Alarms (A)**: grouped by subsystem (PV array, BESS, Grid, Genset, EV, Loads); priority, state, label, live value, age; filters Active / Needs ack / All events; acknowledge per row, per group and all visible (write tier, disabled with the reason otherwise). The PV fault cascade (inverter, strings, array health) is drawn as a timeline with offsets from the first event. Zero-length Cleared/Acknowledged load artefacts (`activeTime == clearTime`) are dropped.
 - **Controls (C)**: Operator tier: BESS mode per container, Grid outage / restore, Inverter fault A_n_-A/B and Clear, Curtail PV (array, kW, release), EV smart charging, Cloudiness (slider, Auto), Jump to hour. Director tier: scenario (`normal`, `grid_outage`, `cloud_front_ev_rush`, `peak_shave_day`, `inverter_fault`) and speed (30 / 60 / 120 / 240). Each action toasts the library `message` and refreshes `mg.status()`; anonymous and Viewer see the live state with "Log in to operate".
 - **Login (L)**: three states: nobody (Viewer by API key, login form), Gateway session ("Gateway session · user" and "Log in as a different user"), Bearer (tier chip, Log out, Log out everywhere). Audit view for Director: last 30 minutes of the audit profile named by `__IGNITE_ENV__.IGNITE_AUDIT_PROFILE`, grouped by actor, every 10 s; hidden when the profile is absent.
 - Reduced motion: flows stop, numbers jump instead of rolling, CSS motion tokens go to 0.
+
+## Screenshots
+
+Headless Chrome, 1920x1080, live data (software-rendered, so only the look is representative).
+
+![Midday: PV, BESS and EV flows on the single-line diagram](../docs/screenshots/microgrid-scene.png)
+![Trends panel: forecast vs actual, import vs demand limit, BESS SOC, cost vs baseline](../docs/screenshots/microgrid-trends.png)
+![Grid outage: island, genset start, curtailed PV and the alarm board with the fault cascade](../docs/screenshots/microgrid-island-alarms.png)
+
+## Performance
+
+`?perf` shows a readout (fps, frame time p50/p95/max, DOM nodes, SSE batches/s, updates/s); `P` toggles it. Measurements: [`docs/perf.md`](../docs/perf.md).
 
 ## Connection model
 

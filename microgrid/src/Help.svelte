@@ -26,10 +26,10 @@
 {#if ui.help}
   <div class="scrim" role="presentation" onclick={() => (ui.help = false)}></div>
   <div class="panel" role="dialog" aria-modal="true" aria-label="About this page">
-    <header>
+    <div class="head">
       <h2>About this page</h2>
       <button aria-label="Close" onclick={() => (ui.help = false)}>&times;</button>
-    </header>
+    </div>
     <ol class="pitch">{#each PITCH as l (l)}<li>{l}</li>{/each}</ol>
     <h3>Keyboard</h3>
     <dl class="keys">
@@ -41,7 +41,7 @@
 <style>
   .scrim { position: fixed; inset: 0; z-index: 39; background: rgb(0 0 0 / 0.45); }
   .panel { position: fixed; z-index: 40; right: var(--space-5); top: calc(var(--hud-h) + var(--space-4)); width: min(520px, calc(100vw - 2 * var(--space-5))); max-height: calc(100vh - var(--hud-h) - 2 * var(--space-5)); overflow: auto; padding: var(--space-4) var(--space-5); background: var(--bg-2); border: 1px solid var(--line-strong); border-radius: var(--radius-3); box-shadow: 0 16px 48px rgb(0 0 0 / 0.6); color: var(--fg-1); font-size: var(--text-sm); }
-  header { display: flex; justify-content: space-between; align-items: center; }
+  .head { display: flex; justify-content: space-between; align-items: center; }
   h2 { margin: 0; color: var(--accent); font-size: var(--text-md); letter-spacing: 0.08em; text-transform: uppercase; }
   button { font: 700 var(--text-lg) var(--font-mono); color: var(--fg-1); background: none; border: 0; cursor: pointer; }
   .pitch { margin: var(--space-3) 0; padding-left: 1.4em; display: flex; flex-direction: column; gap: 6px; }

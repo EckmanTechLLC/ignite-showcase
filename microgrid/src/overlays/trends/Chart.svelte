@@ -140,19 +140,20 @@
     }
   }
 
-  /** Append the live value once per history bucket, drop what left the window, redraw (2 Hz, well under the 4 Hz cap). */
+  /** Append the live value once per history bucket and drop what left the window; redraw only when the data changed (once per bucket, not at every 500 ms poll). */
   function tick(): void {
     const w = WINDOWS[win];
     const step = w.ms / w.points;
     const now = Date.now();
+    let changed = false;
     for (const s of signals) {
       const arr = data.get(s.tag);
       const v = plausible(tagNum(s.tag));
       if (!arr) continue;
-      if (v !== null && (!arr.length || now - arr[arr.length - 1][0] >= step)) arr.push([now, v]);
-      while (arr.length && arr[0][0] < now - w.ms) arr.shift();
+      if (v !== null && (!arr.length || now - arr[arr.length - 1][0] >= step)) { arr.push([now, v]); changed = true; }
+      while (arr.length && arr[0][0] < now - w.ms) { arr.shift(); changed = true; }
     }
-    draw();
+    if (changed) draw();
   }
 
   onMount(() => {

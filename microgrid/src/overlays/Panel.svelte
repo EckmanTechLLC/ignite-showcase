@@ -11,7 +11,8 @@
     <div class="extra">{@render head?.()}</div>
     <button class="x" aria-label="Close panel" onclick={() => (ui.panel = null)}>&times;</button>
   </header>
-  <div class="body">{@render children()}</div>
+  <!-- svelte-ignore a11y_no_noninteractive_tabindex (keyboard-scrollable region) -->
+  <div class="body" tabindex="0">{@render children()}</div>
 </section>
 
 <style>

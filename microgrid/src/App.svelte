@@ -52,10 +52,14 @@
 
 <Hud />
 <DayStrip />
-<main class="stage"><Diagram /></main>
+<main class="stage"><h1 class="sr-only">Campus Microgrid</h1><Diagram /></main>
 <Tooltip />
 <Dock />
 {#if ui.panel === 'trends'}<Trends />{:else if ui.panel === 'alarms'}<AlarmBoard />{:else if ui.panel === 'controls'}<Controls />{:else if ui.panel === 'identity'}<Identity />{/if}
 <Help />
 <Toasts />
 <PerfReadout />
+
+<style>
+  .sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
+</style>

@@ -110,7 +110,7 @@
   li.high { border-left-color: var(--warn); }
   li.critical { border-left-color: var(--alarm); }
   li.medium { border-left-color: var(--info); }
-  li.cleared { opacity: 0.6; }
+  li.cleared { opacity: 0.9; }
   li .off { color: var(--accent); }
   li b { color: var(--fg-0); font-weight: 500; }
   li .t { color: var(--fg-2); }
