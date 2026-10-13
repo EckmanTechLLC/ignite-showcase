@@ -2,7 +2,8 @@
   import Roll from './Roll.svelte';
   import { live, dataAgeS, tagNum, tagStr } from '../live/store.svelte';
   import { ident } from '../identity.svelte';
-  import { ui } from '../ui.svelte';
+  import { ui, togglePanel } from '../ui.svelte';
+  import { hasCritical } from '../overlays/alarms/store.svelte';
   import { num, pretty } from '../fmt';
 
   const net = $derived(tagNum('KPI/NetLoadkW'));
@@ -27,8 +28,9 @@
   const linkLabel = $derived(live.connection === 'closed' ? 'RECONNECTING' : live.connection === 'connecting' ? 'CONNECTING' : age > 10 ? 'STALE' : 'LIVE');
   const linkTone = $derived(live.connection === 'open' && age <= 10 ? 'ok' : live.connection === 'closed' ? 'alarm' : 'warn');
   const ageText = $derived(Number.isFinite(age) ? (age < 10 ? age.toFixed(1) : Math.round(age).toString()) + ' s' : '—');
-  const idLabel = $derived(ident.method === 'web' ? `Gateway · ${ident.user}` : ident.method === 'bearer' ? `${ident.tier} · ${ident.user}` : 'Anonymous · API key');
-  const idTitle = $derived(ident.levels.length ? `Security levels: ${ident.levels.join(', ')}` : 'Identity as the gateway sees it (login arrives with the overlays)');
+  const idLabel = $derived(ident.method === 'web' ? `Gateway session · ${ident.user}` : ident.method === 'bearer' ? `${ident.tier} · ${ident.user}` : 'Anonymous · API key');
+  const idTitle = $derived(ident.levels.length ? `Security levels: ${ident.levels.join(', ')}` : 'Identity as the gateway sees it (L to log in)');
+  const critical = $derived(hasCritical());
 </script>
 
 <header class="hud mono mode-{modeTone}">
@@ -81,11 +83,11 @@
 
   <div class="spacer"></div>
 
-  <div class="tile alarms" class:crit={alarms > 0} title="Active alarms (alarm board arrives with the overlays)">
+  <button class="tile alarms" class:crit={alarms > 0} class:pulse={critical} title="Active alarms: open the alarm board (A)" onclick={() => togglePanel('alarms')}>
     <div class="k">ALARMS</div>
     <div class="v" class:hot={alarms > 0}>{num(alarms, 0)}</div>
-    <div class="s">active</div>
-  </div>
+    <div class="s">{critical ? 'CRITICAL' : 'active'}</div>
+  </button>
 
   <div class="tile mode">
     <div class="k">MODE</div>
@@ -103,10 +105,10 @@
     {#if live.history === 'unavailable'}<div class="s note" role="status">History/alarms unavailable &mdash; gateway trial may have expired</div>{/if}
   </div>
 
-  <div class="tile id" title={idTitle}>
+  <button class="tile id" title={idTitle} onclick={() => togglePanel('identity')}>
     <div class="k">IDENTITY</div>
     <div class="idrow" class:on={ident.method !== null}>{idLabel}</div>
-  </div>
+  </button>
 
   <button class="help" aria-label="Help and about (?)" title="Help (?)" onclick={() => (ui.help = !ui.help)}>?</button>
 </header>
@@ -141,7 +143,10 @@
   .meter { height: 4px; border-radius: 2px; background: var(--bg-3); overflow: hidden; }
   .meter i { display: block; height: 100%; background: var(--accent); transform-origin: left; transition: transform var(--dur-slow) var(--ease-out); }
   .spacer { flex: 1; }
+  button.tile { background: none; border: 0; padding: 0; margin: 0; font: inherit; color: inherit; text-align: left; cursor: pointer; }
+  button.tile:hover .k { color: var(--accent); }
   .tile.alarms { min-width: 70px; }
+  .tile.alarms.pulse { animation: pulse 1s ease-in-out infinite; }
   .tile.alarms.crit .v, .tile.alarms.crit .s { color: var(--alarm); }
   .mode { min-width: 190px; gap: 4px; }
   .badge { align-self: flex-start; padding: 1px 12px; border-radius: var(--radius-2); font-weight: 700; letter-spacing: 0.08em; font-size: var(--text-md); border: 1px solid currentColor; }

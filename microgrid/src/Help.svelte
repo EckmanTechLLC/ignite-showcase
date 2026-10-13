@@ -3,7 +3,11 @@
 
   const KEYS: [string, string][] = [
     ['?', 'This panel (also ?about in the URL)'],
-    ['Esc', 'Close this panel, then clear the selection'],
+    ['T', 'Trends: forecast vs actual, import vs baseline, SOC, cost'],
+    ['A', 'Alarm board with acknowledge'],
+    ['C', 'Controls: dispatch and scenarios by tier'],
+    ['L', 'Login, identity and audit'],
+    ['Esc', 'Close this panel, then clear the selection, then the open overlay'],
     ['P', 'Performance readout (when the URL has ?perf)'],
     ['Tab / Enter', 'Move between elements / select one'],
   ];
