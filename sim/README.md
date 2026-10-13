@@ -14,6 +14,9 @@ sim/
   datacenter/             Demo 2 - Data Center (see datacenter/README.md)
     tags.json             675 tags under [default]DC/
     project/              same layout: timer/dc_sim, script-python/dc
+  microgrid/              Demo 3 - Campus Microgrid (see microgrid/README.md)
+    tags.json             405 tags under [default]MG/
+    project/              same layout: timer/mg_sim, script-python/mg
   scripts/
     load-tags.mjs         load a tag model through Ignite (operator tier)
     install-project.sh    copy project resources to the gateway host and restart the gateway
