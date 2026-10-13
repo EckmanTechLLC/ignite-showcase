@@ -1,6 +1,5 @@
 def handleTimerEvent():
 	import math
-	import random
 
 	# Campus Microgrid simulation - 1 s gateway timer (ADR-005 Amendment A1).
 	# All state lives in tags under [default]MG/ (see sim/microgrid/README.md); this script keeps no state
@@ -40,6 +39,31 @@ def handleTimerEvent():
 	EV_KW = 22.0
 	FC_CLOUD = 0.15           # climatological cloudiness the day-ahead PV forecast assumes
 	BLD_HVAC = [5.0, 3.5, 3.8]
+
+	# --- random numbers ----------------------------------------------------------------------------
+	# A fresh generator per tick seeded with consecutive integers gave strongly correlated first draws on the
+	# gateway (bursts of EV arrivals), so the seed is hashed and a few draws are discarded.
+	class Rng:
+		def __init__(self, seed):
+			x = (seed * 2654435761 + 1013904223) % 4294967296
+			if x == 0:
+				x = 2463534242
+			self.x = x
+			for i in range(8):
+				self.random()
+
+		def random(self):
+			x = self.x
+			x = x ^ ((x << 13) & 4294967295)
+			x = x ^ (x >> 17)
+			x = x ^ ((x << 5) & 4294967295)
+			self.x = x
+			return x / 4294967296.0
+
+		def gauss(self, mu, sigma):
+			u1 = max(self.random(), 1e-9)
+			u2 = self.random()
+			return mu + sigma * math.sqrt(-2.0 * math.log(u1)) * math.cos(2.0 * math.pi * u2)
 
 	# --- keys --------------------------------------------------------------------------------------
 	def ik(a, inv, name):
@@ -1067,7 +1091,7 @@ def handleTimerEvent():
 			S["_Sim_/State/LastEpochMs"] = now
 			S["_Sim_/TickCount"] += 1
 			tick = S["_Sim_/TickCount"]
-			rng = random.Random(S["_Sim_/Seed"] * 100003 + tick)
+			rng = Rng(S["_Sim_/Seed"] * 100003 + tick)
 			model(S, ds, he, real, rng, tick)
 			for m in S["_log_err"]:
 				S["_Sim_/LastError"] = m

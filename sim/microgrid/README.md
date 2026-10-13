@@ -139,6 +139,11 @@ be edited. `_Sim_/Fault/*` are the fault switches (the library covers them; `Fau
 
 `_Sim_/LastTickMs` is the **duration in milliseconds** of the last tick's read + compute (the write follows it and
 is logged separately every 60 ticks: `mg_sim tick N: read+compute X ms, write Y ms (Z tags)`).
+Measured on the lab gateway (about 590 keys read, 70-220 changed tags written per tick): read+compute 7-37 ms
+(`LastTickMs` max 21 over 31 minutes), write 1-20 ms.
+
+The noise generator is a small xorshift class inside the timer: a fresh `random.Random` per tick seeded with
+consecutive integers produced correlated first draws on the gateway's Jython (bursts of simultaneous EV arrivals).
 
 ### History and the historian load
 
