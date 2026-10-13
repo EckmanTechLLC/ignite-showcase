@@ -1,1 +1,0 @@
-export{n as WebGLRenderer}from"./scene-ipADK6AQ.js";

@@ -1,1 +1,0 @@
-export{r as CanvasRenderer}from"./scene-ipADK6AQ.js";
