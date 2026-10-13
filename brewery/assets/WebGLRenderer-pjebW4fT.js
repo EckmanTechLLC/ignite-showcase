@@ -1,1 +1,0 @@
-export{n as WebGLRenderer}from"./scene-Bgvz18KH.js";

@@ -1,0 +1,1 @@
+export{t as WebGPURenderer}from"./scene-Dg7qhQlu.js";
