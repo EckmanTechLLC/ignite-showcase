@@ -5,7 +5,7 @@ import { tag, tagNum, tagStr } from './live/store';
 import { MACHINE_LABEL, SLOTS, recipeColor } from './model';
 import { hhmm, num, pretty, unitOf } from './fmt';
 
-type Row = [label: string, value: string, tone?: 'warn' | 'alarm' | 'ok'];
+export type Row = [label: string, value: string, tone?: 'warn' | 'alarm' | 'ok'];
 
 /** "<value> <unit>" for a tag, '—' while it has not arrived. */
 const val = (name: string, digits = 1): string => {
@@ -17,7 +17,7 @@ const val = (name: string, digits = 1): string => {
 const text = (name: string): string => pretty(tagStr(name));
 const sp = (a: string, b: string, d = 1): string => `${num(tagNum(a), d)} / ${num(tagNum(b), d)} °C`;
 
-function brewRows(id: string): Row[] {
+export function brewRows(id: string): Row[] {
   const b = `Brewhouse/${id}`;
   if (id === 'HLT' || id === 'CLT') return [['Level', val(`${b}/LevelPct`, 0)], ['Temperature', val(`${b}/TempC`)]];
   const rows: Row[] = [
@@ -37,7 +37,7 @@ function brewRows(id: string): Row[] {
   return rows;
 }
 
-function cellarRows(id: string): Row[] {
+export function cellarRows(id: string): Row[] {
   const b = `Cellar/${id}`;
   if (id.startsWith('BBT')) {
     return [
@@ -72,7 +72,7 @@ const UTIL: Record<string, [string, string, number][]> = {
   CIP: [['Step', 'Utilities/CIP/Step', 0], ['Target', 'Utilities/CIP/TargetUnit', 0], ['Conductivity', 'Utilities/CIP/ConductivitymS', 1], ['Temperature', 'Utilities/CIP/TempC', 1]],
 };
 
-function lineRows(id: string): Row[] {
+export function lineRows(id: string): Row[] {
   const L = 'Packaging/Line';
   const rows: Row[] = [];
   if (id !== 'Line') {

@@ -1,0 +1,20 @@
+import type { EChartsType } from 'echarts/core';
+
+/** ECharts is loaded on first use so the scene bundle stays small (Vite splits this into its own chunk). */
+export type Echarts = { init: (el: HTMLElement) => EChartsType };
+
+let loading: Promise<Echarts> | null = null;
+
+export function loadEcharts(): Promise<Echarts> {
+  loading ??= (async () => {
+    const [core, charts, comps, canvas] = await Promise.all([
+      import('echarts/core'),
+      import('echarts/charts').then((m) => [m.LineChart, m.BarChart]),
+      import('echarts/components').then((m) => [m.GridComponent, m.TooltipComponent, m.MarkLineComponent, m.LegendComponent]),
+      import('echarts/renderers').then((m) => m.CanvasRenderer),
+    ]);
+    core.use([...charts, ...comps, canvas]);
+    return { init: (el) => core.init(el, undefined, { renderer: 'canvas' }) };
+  })();
+  return loading;
+}

@@ -6,9 +6,13 @@ const KEYS: [string, string][] = [
   ['R', 'Reset the camera (fit to the window)'],
   ['Drag / wheel', 'Pan / zoom the plant'],
   ['Click', 'Select a vessel, machine, utility or batch (Esc clears)'],
-  ['Esc', 'Close this panel, then clear the selection'],
+  ['Esc', 'Close this help, then clear the selection, then close the panel'],
   ['P', 'Performance readout (when the URL has ?perf)'],
-  ['T A C B L', 'Trends, alarms, controls, batch, login: arrive with the overlays'],
+  ['B', 'Batch: recipe, ISA-88 phases, QA, genealogy; all 24 records'],
+  ['T', 'Trends: fermentation, cellar, OEE, utilities; click a plant item to chart it'],
+  ['A', 'Alarm board: grouped by area, acknowledge, glycol cascade'],
+  ['C', 'Controls: operator and director actions'],
+  ['L', 'Login, identity and (director) audit'],
 ];
 const PITCH = [
   'A craft brewery drawn as a live isometric plant: brewhouse, 12 fermenters, 4 bright tanks, a canning line and the utilities.',

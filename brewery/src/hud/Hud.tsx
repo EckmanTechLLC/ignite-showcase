@@ -2,7 +2,8 @@ import { Show } from 'solid-js';
 import Roll from './Roll';
 import { dataAgeS, live, tagNum, tagStr } from '../live/store';
 import { identity } from '../identity';
-import { help, setHelp } from '../ui';
+import { help, setHelp, togglePanel } from '../ui';
+import { hasSevere } from '../overlays/alarms/store';
 import { MODE_TONE } from '../model';
 import { hhmm, num, pretty } from '../fmt';
 
@@ -78,11 +79,11 @@ export default function Hud() {
 
       <div class="spacer" />
 
-      <div class="tile alarms" classList={{ crit: alarms() > 0 }} title="Active alarms (alarm board arrives with the overlays)">
+      <button class="tile alarms" classList={{ crit: alarms() > 0, pulse: hasSevere() }} title="Active alarms: open the alarm board (A)" onClick={() => togglePanel('alarms')}>
         <div class="k">ALARMS</div>
         <div class="v" classList={{ hot: alarms() > 0 }}>{num(alarms(), 0)}</div>
         <div class="s">active</div>
-      </div>
+      </button>
 
       <div class="tile mode">
         <div class="k">MODE</div>
@@ -105,10 +106,10 @@ export default function Hud() {
         </Show>
       </div>
 
-      <div class="tile id" title={idTitle()}>
+      <button class="tile id" title={idTitle()} onClick={() => togglePanel('identity')}>
         <div class="k">IDENTITY</div>
         <div class="idrow" classList={{ on: identity().method !== null }}>{idLabel()}</div>
-      </div>
+      </button>
 
       <button class="help" aria-label="Help and about (?)" title="Help (?)" onClick={() => setHelp(!help())}>?</button>
     </header>

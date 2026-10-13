@@ -13,7 +13,7 @@ Each demo is a single full-viewport control-room screen on a different front-end
 | `launch/` | Demo 1 — Launch Operations: React 18, Vite, React Three Fiber, ECharts |
 | `datacenter/` | Demo 2 — Data Center: Vue 3, Vite, animated SVG |
 | `microgrid/` | Demo 3 — Campus Microgrid: Svelte 5, Vite, animated single-line diagram (scene: task-67; overlays: task-68) |
-| `brewery/` | Demo 4 — Craft Brewery: SolidJS, Vite, PixiJS 8 isometric plant, batch Gantt strip and OEE tile (scene: task-73; overlays: task-74) |
+| `brewery/` | Demo 4 — Craft Brewery: SolidJS, Vite, PixiJS 8 isometric plant, batch Gantt strip, OEE tile and overlays: batch, trends, alarms, controls, identity, audit (task-73, task-74) |
 | `scripts/deploy.mjs` | Builds every demo and commits the output to the `deploy` branch |
 | `docs/ASSETS.md` | Every bundled third-party asset and its licence |
 | `docs/perf.md` | Measured performance, Lighthouse scores and what was changed because of them |
