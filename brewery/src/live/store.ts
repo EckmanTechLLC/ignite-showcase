@@ -91,8 +91,8 @@ function apply(updates: TagUpdate[]): void {
   });
 }
 
-/** Historized tag that moves whenever a fermentation runs; its history going all-null means the historian stopped. */
-const HISTORY_PROBE_TAG = PREFIX + 'Cellar/FV01/GravityP';
+/** Historized tag that moves every few seconds whatever the plant does (the day's energy total); all-null history means the historian stopped. A fermenter's gravity is not usable: it stands still in conditioning. */
+const HISTORY_PROBE_TAG = PREFIX + 'Utilities/Energy/TodayKwh';
 const HISTORY_PROBE_MS = 60_000;
 
 async function probe(): Promise<void> {
