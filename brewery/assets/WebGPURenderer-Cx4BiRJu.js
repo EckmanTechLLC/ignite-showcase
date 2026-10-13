@@ -1,0 +1,1 @@
+export{t as WebGPURenderer}from"./scene-Bgvz18KH.js";
