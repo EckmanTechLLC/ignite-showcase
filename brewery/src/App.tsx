@@ -61,7 +61,10 @@ export default function App() {
     <>
       <Hud />
       <BatchStrip />
-      <Plant />
+      <main>
+        <h1 class="sr-only">Craft Brewery</h1>
+        <Plant />
+      </main>
       <OeeTile />
       <Tooltip />
       <Dock />
