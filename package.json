@@ -6,10 +6,10 @@
   "license": "MIT",
   "type": "module",
   "engines": { "node": ">=20.19" },
-  "workspaces": ["shared/*", "launch", "datacenter", "microgrid"],
+  "workspaces": ["shared/*", "launch", "datacenter", "microgrid", "brewery"],
   "scripts": {
-    "build": "npm run build -w @ignite/client && npm run build -w @ignite/launch && npm run build -w @ignite/datacenter && npm run build -w @ignite/microgrid",
-    "test": "npm run test -w @ignite/client && npm run test -w @ignite/datacenter && npm run test -w @ignite/microgrid",
+    "build": "npm run build -w @ignite/client && npm run build -w @ignite/launch && npm run build -w @ignite/datacenter && npm run build -w @ignite/microgrid && npm run build -w @ignite/brewery",
+    "test": "npm run test -w @ignite/client && npm run test -w @ignite/datacenter && npm run test -w @ignite/microgrid && npm run test -w @ignite/brewery",
     "deploy": "node scripts/deploy.mjs"
   }
 }

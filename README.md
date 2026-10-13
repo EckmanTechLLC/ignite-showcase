@@ -13,12 +13,13 @@ Each demo is a single full-viewport control-room screen on a different front-end
 | `launch/` | Demo 1 — Launch Operations: React 18, Vite, React Three Fiber, ECharts |
 | `datacenter/` | Demo 2 — Data Center: Vue 3, Vite, animated SVG |
 | `microgrid/` | Demo 3 — Campus Microgrid: Svelte 5, Vite, animated single-line diagram (scene: task-67; overlays: task-68) |
+| `brewery/` | Demo 4 — Craft Brewery: SolidJS, Vite, PixiJS 8 isometric plant, batch Gantt strip and OEE tile (scene: task-73; overlays: task-74) |
 | `scripts/deploy.mjs` | Builds every demo and commits the output to the `deploy` branch |
 | `docs/ASSETS.md` | Every bundled third-party asset and its licence |
 | `docs/perf.md` | Measured performance, Lighthouse scores and what was changed because of them |
 | `docs/screenshots/` | Three screenshots per demo (used by the demo READMEs) |
 
-`main` holds source only. The `deploy` branch holds built output only (`launch/`, `datacenter/`, `microgrid/`); gateway site records point at it with `servePath=launch` / `servePath=datacenter` / `servePath=microgrid`.
+`main` holds source only. The `deploy` branch holds built output only (`launch/`, `datacenter/`, `microgrid/`, `brewery/`); gateway site records point at it with `servePath=launch` / `servePath=datacenter` / `servePath=microgrid` / `servePath=brewery`.
 
 ## Screenshots
 
@@ -37,7 +38,7 @@ The other demos' screenshots are in `launch/README.md` and `datacenter/README.md
 
 ## Local development
 
-Copy `.env.example` in a demo folder to `.env.development.local` (git-ignored; `vite build` never reads it, unlike `.env.local`, so the key cannot reach `dist/`), fill in the gateway URL, site and (read-tier) API key, then `npm run dev -w @ignite/launch` (or `@ignite/datacenter`, `@ignite/microgrid`). In production the gateway injects `window.__IGNITE_ENV__`; nothing else is configuration.
+Copy `.env.example` in a demo folder to `.env.development.local` (git-ignored; `vite build` never reads it, unlike `.env.local`, so the key cannot reach `dist/`), fill in the gateway URL, site and (read-tier) API key, then `npm run dev -w @ignite/launch` (or `@ignite/datacenter`, `@ignite/microgrid`, `@ignite/brewery`). In production the gateway injects `window.__IGNITE_ENV__`; nothing else is configuration.
 
 ## Deploy
 

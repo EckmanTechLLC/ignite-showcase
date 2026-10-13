@@ -1,0 +1,26 @@
+{
+  "name": "@ignite/brewery",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "gen": "node scripts/gen-paths.mjs",
+    "dev": "npm run gen && vite",
+    "build": "npm run gen && tsc --noEmit && vite build",
+    "check": "npm run gen && tsc --noEmit",
+    "preview": "vite preview",
+    "test": "npm run gen && vitest run"
+  },
+  "dependencies": {
+    "@ignite/client": "*",
+    "@ignite/theme": "*",
+    "echarts": "6.1.0",
+    "pixi.js": "8.22.0",
+    "solid-js": "1.9.17"
+  },
+  "devDependencies": {
+    "typescript": "5.9.3",
+    "vite": "8.3.4",
+    "vite-plugin-solid": "2.11.14"
+  }
+}

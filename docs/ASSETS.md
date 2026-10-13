@@ -21,3 +21,17 @@ Runtime libraries bundled into `launch/dist` (npm, no CDN):
 | @react-three/fiber, @react-three/drei | 8.18.0 / 9.122.0 | MIT |
 | @react-three/postprocessing | 2.19.1 | MIT |
 | postprocessing | 6.39.5 | Zlib |
+
+## Craft Brewery demo (`brewery/`)
+
+The whole plant is drawn by the PixiJS scene from code: every vessel, pipe, machine, floor and zone title is a vector shape, and the four small sprite textures (flow dot, bubble, can, steam puff) are painted once on a 2D canvas at start-up. No model, image or font file is bundled beyond the shared theme fonts above (JetBrains Mono is also the font of the scene text).
+
+Runtime libraries bundled into `brewery/dist` (npm, no CDN):
+
+| Library | Version | Licence |
+|---|---|---|
+| solid-js | 1.9.17 | MIT |
+| pixi.js | 8.22.0 | MIT |
+| echarts (declared for task-74, not imported yet) | 6.1.0 | Apache-2.0 |
+
+Build-time only: `vite-plugin-solid` 2.11.14 (MIT).
