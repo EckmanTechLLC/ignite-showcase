@@ -2,15 +2,18 @@
 // Build every demo and commit the output to the orphan `deploy` branch (ADR-005 section 8).
 // Usage: node scripts/deploy.mjs [--push]
 import { execFileSync } from 'node:child_process';
-import { cpSync, existsSync, mkdirSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const wt = join(root, '.deploy-worktree');
 const BRANCH = 'deploy';
-const DEMOS = ['launch', 'datacenter'];
 const push = process.argv.includes('--push');
+
+// Every workspace app (a folder with its own package.json and an index.html) is a demo; the build must leave a dist/ in each.
+const DEMOS = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'))
+  .workspaces.filter((w) => !w.includes('*') && existsSync(join(root, w, 'index.html')));
 
 const run = (cmd, args, cwd = root, opts = {}) =>
   execFileSync(cmd, args, { cwd, stdio: opts.capture ? ['ignore', 'pipe', 'inherit'] : 'inherit', encoding: 'utf8' });

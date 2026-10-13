@@ -1,0 +1,26 @@
+{
+  "name": "@ignite/microgrid",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "gen": "node scripts/gen-paths.mjs",
+    "dev": "npm run gen && vite",
+    "build": "npm run gen && svelte-check --tsconfig ./tsconfig.json && vite build",
+    "check": "npm run gen && svelte-check --tsconfig ./tsconfig.json",
+    "preview": "vite preview",
+    "test": "npm run gen && vitest run"
+  },
+  "dependencies": {
+    "@ignite/client": "*",
+    "@ignite/theme": "*",
+    "echarts": "6.1.0",
+    "svelte": "5.57.2"
+  },
+  "devDependencies": {
+    "@sveltejs/vite-plugin-svelte": "7.3.1",
+    "svelte-check": "4.7.6",
+    "typescript": "5.9.3",
+    "vite": "8.3.4"
+  }
+}
