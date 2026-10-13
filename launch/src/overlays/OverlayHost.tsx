@@ -113,8 +113,8 @@ function ToolDock() {
       ))}
       <button type="button" className={`who-chip ${open.has('identity') ? 'active' : ''}`} onClick={() => togglePanel('identity')} title="Identity (L)" aria-pressed={open.has('identity')}>
         <kbd>L</kbd>
-        <span>{s.loggedIn ? s.user : 'Log in'}</span>
-        <i className={`tier tier-${s.tier}`}>{s.tier}</i>
+        <span>{s.loggedIn ? (s.authMethod === 'web' ? `Gateway · ${s.user}` : s.user) : 'Log in'}</span>
+        <i className={`tier tier-${s.tier}`} title={s.loggedIn ? `Security levels: ${s.securityLevels.join(', ') || 'none'}` : undefined}>{s.tier}</i>
       </button>
     </nav>
   );

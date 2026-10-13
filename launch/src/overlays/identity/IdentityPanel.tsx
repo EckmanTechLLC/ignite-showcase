@@ -33,6 +33,7 @@ export function IdentityPanel() {
   const [pass, setPass] = useState('');
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [formOpen, setFormOpen] = useState(false);
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
@@ -40,44 +41,76 @@ export function IdentityPanel() {
     const msg = await signIn(user.trim(), pass);
     setBusy(false);
     setErr(msg);
-    if (!msg) setPass('');
+    if (!msg) {
+      setPass('');
+      setFormOpen(false);
+    }
   };
+
+  const method = session.loggedIn ? session.authMethod : null;
+  const tierTitle = `Tier from permissions. Security levels: ${session.securityLevels.length ? session.securityLevels.join(', ') : 'none'}`;
+  const tierNote = session.canAdmin ? 'Scenario, speed and fault controls; audit ticker.' : session.canWrite ? 'Sequencer commands and alarm acknowledge.' : 'Read-only access.';
+
+  const form = (
+    <form onSubmit={submit} className="login">
+      {method === null && <p className="muted">Viewer (API key). Log in for Operator or Director controls.</p>}
+      <label>
+        Username
+        <input className="inp" value={user} onChange={(e) => setUser(e.target.value)} autoComplete="username" required />
+      </label>
+      <label>
+        Password
+        <input className="inp" type="password" value={pass} onChange={(e) => setPass(e.target.value)} autoComplete="current-password" required />
+      </label>
+      {err && (
+        <p className="note bad" role="alert">
+          {err}
+        </p>
+      )}
+      <button type="submit" className="btn primary" disabled={busy}>
+        {busy ? 'Signing in...' : 'Log in'}
+      </button>
+      {method === 'web' && (
+        <button type="button" className="btn ghost" onClick={() => setFormOpen(false)}>
+          Cancel
+        </button>
+      )}
+    </form>
+  );
 
   return (
     <Panel id="identity" title="Identity" hint="L">
-      {session.loggedIn ? (
+      {method === 'bearer' && (
         <div className="who">
           <p>
-            <b>{session.user}</b> <span className={`tier tier-${session.tier}`}>{session.tier}</span>
+            <b>{session.user}</b> <span className={`tier tier-${session.tier}`} title={tierTitle}>{session.tier}</span>
           </p>
-          <p className="muted">
-            {session.canAdmin ? 'Scenario, speed and fault controls; audit ticker.' : session.canWrite ? 'Sequencer commands and alarm acknowledge.' : 'Read-only access.'}
-          </p>
+          <p className="muted">{tierNote}</p>
           <button type="button" className="btn" onClick={() => void signOut()}>
             Log out
           </button>
+          <details>
+            <summary className="muted">More</summary>
+            <button type="button" className="btn ghost" onClick={() => void signOut(true)}>
+              Log out everywhere
+            </button>
+          </details>
         </div>
-      ) : (
-        <form onSubmit={submit} className="login">
-          <p className="muted">Viewing as <b>Viewer</b>. Log in for Operator or Director controls.</p>
-          <label>
-            Username
-            <input className="inp" value={user} onChange={(e) => setUser(e.target.value)} autoComplete="username" required />
-          </label>
-          <label>
-            Password
-            <input className="inp" type="password" value={pass} onChange={(e) => setPass(e.target.value)} autoComplete="current-password" required />
-          </label>
-          {err && (
-            <p className="note bad" role="alert">
-              {err}
-            </p>
-          )}
-          <button type="submit" className="btn primary" disabled={busy}>
-            {busy ? 'Signing in...' : 'Log in'}
-          </button>
-        </form>
       )}
+      {method === 'web' && (
+        <div className="who">
+          <p>
+            Gateway session · <b>{session.user}</b> <span className={`tier tier-${session.tier}`} title={tierTitle}>{session.tier}</span>
+          </p>
+          <p className="muted">You are identified by your Ignition gateway login. Tiers come from that account's roles.</p>
+          {!formOpen && (
+            <button type="button" className="btn" onClick={() => setFormOpen(true)}>
+              Log in as a different user
+            </button>
+          )}
+        </div>
+      )}
+      {(method === null || (method === 'web' && formOpen)) && form}
       {session.canAdmin && (auditProfile() ? <AuditTicker /> : <p className="note">Audit ticker hidden: the site has no IGNITE_AUDIT_PROFILE.</p>)}
     </Panel>
   );

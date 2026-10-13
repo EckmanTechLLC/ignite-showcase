@@ -36,6 +36,14 @@ Role-generic names (ADR-005 section 7), derived from `/auth/session` `permission
 reason as their tooltip. A 401 on a call made with a stored token clears it and demotes to read-only (`onUnauthorized`).
 The Director-only speed/raw-scenario controls are a UI gate: the server enforces only the write tier on `/script/library`.
 
+### Identity states
+
+The Identity panel (`L`) follows `/auth/session` `authMethod`:
+
+- **Anonymous / Viewer (API key)** (`null`): login form.
+- **Gateway session** (`web`): you are signed in to the Ignition gateway web UI in this browser; the gateway identifies you by that account and tiers come from its roles (raw `securityLevels` in the tooltip). No Log out is offered (`canLogout` is false); **Log in as a different user** opens the form, and the Bearer login then overrides the web session (ADR-004 section 1).
+- **Bearer** (`bearer`): tier chip with **Log out** (and **Log out everywhere** under More). After logout the panel shows the Gateway session state if one exists, else the form.
+
 ## Feature matrix (every Ignite route)
 
 | Route | Used by | Notes |
@@ -52,8 +60,8 @@ The Director-only speed/raw-scenario controls are a UI gate: the server enforces
 | `POST /script/system`, `GET /script/projects` | n/a | The demo calls named library functions only; raw `system.*` access is not needed and is the broader privilege |
 | `POST /db/query` | n/a | The data center sim has no database; history comes from the tag historian |
 | `POST /auth/login` | `identity/auth.ts` | 401 shown as a generic message, 429 as a lockout message |
-| `GET /auth/session` | `identity/auth.ts` | `permissions` -> tier; refreshed after login, logout and on `unauthorized` |
-| `POST /auth/logout` | `identity/auth.ts` | Server session invalidated, local token always cleared |
+| `GET /auth/session` | `identity/auth.ts` | `permissions` -> tier; `authMethod` / `canLogout` / `securityLevels` -> panel state and tooltip; refreshed after login, logout and on `unauthorized` |
+| `POST /auth/logout` | `identity/auth.ts` | Server session invalidated (`{"loggedOut":n}`, optional `everywhere`), local token always cleared; 400 for non-bearer callers = nothing logged out |
 | `GET /audit/logs` | `identity/IdentityPanel.vue` | Director only; last 30 min every 10 s, grouped by actor; profile from `__IGNITE_ENV__.IGNITE_AUDIT_PROFILE`, audit hidden when absent |
 | `/sites*`, `/system/*` | n/a | Gateway administration, not an operator-facing function (the audit profile is set once through `PUT /sites/:id` `envVars`) |
 

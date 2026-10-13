@@ -6,7 +6,7 @@ import { getAlarmHistory, getAlarmStatus, acknowledgeAlarm } from '../src/api/al
 import { callLibrary, callSystem } from '../src/api/scripts.js';
 import { namedQuery } from '../src/api/db.js';
 import { getAuditLogs } from '../src/api/audit.js';
-import { login, logout } from '../src/api/auth.js';
+import { login, logout, session } from '../src/api/auth.js';
 import { lastCall, MemoryStorage, mockFetch } from './helpers.js';
 
 beforeEach(() => {
@@ -139,10 +139,45 @@ describe('wrappers', () => {
     mockFetch(200, { token: 'T9', user: 'u', roles: [], expiresIn: 1 });
     await login('u', 'p');
     expect(getToken()).toBe('T9');
-    const f = mockFetch(200, { success: true });
-    await logout();
+    const f = mockFetch(200, { loggedOut: 1 });
+    await expect(logout()).resolves.toEqual({ loggedOut: 1 });
     expect(lastCall(f).url).toContain('/auth/logout');
+    expect(JSON.parse(lastCall(f).init.body as string)).toEqual({});
     expect(getToken()).toBeNull();
+  });
+
+  it('logout({everywhere}) sends the flag', async () => {
+    setToken('T1');
+    const f = mockFetch(200, { loggedOut: 3 });
+    await expect(logout({ everywhere: true })).resolves.toEqual({ loggedOut: 3 });
+    expect(JSON.parse(lastCall(f).init.body as string)).toEqual({ everywhere: true });
+  });
+
+  it('logout resolves with loggedOut 0 on the 400 for a non-bearer caller, and clears the token', async () => {
+    setToken('stale');
+    mockFetch(400, { error: 'no bearer session to log out' });
+    await expect(logout()).resolves.toEqual({ loggedOut: 0 });
+    expect(getToken()).toBeNull();
+  });
+
+  it('logout without a token makes no request', async () => {
+    const f = mockFetch(200, {});
+    await expect(logout()).resolves.toEqual({ loggedOut: 0 });
+    expect(f).not.toHaveBeenCalled();
+  });
+
+  it('logout still rejects on a server error', async () => {
+    setToken('T2');
+    mockFetch(500, {});
+    await expect(logout()).rejects.toMatchObject({ status: 500 });
+    expect(getToken()).toBeNull();
+  });
+
+  it('session exposes authMethod and canLogout', async () => {
+    mockFetch(200, { authenticated: true, user: 'etl', authMethod: 'web', canLogout: false, securityLevels: ['Administrators'], permissions: { canWrite: true, canAdmin: true, canAdminGateway: true }, site: 'launch' });
+    const s = await session();
+    expect(s.authMethod).toBe('web');
+    expect(s.canLogout).toBe(false);
   });
 });
 

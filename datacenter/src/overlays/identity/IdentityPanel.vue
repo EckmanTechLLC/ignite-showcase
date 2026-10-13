@@ -2,12 +2,14 @@
 import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue';
 import { getAuditLogs } from '@ignite/client';
 import Panel from '../Panel.vue';
-import { TIER_LABEL, auditProfile, canAdmin, doLogin, doLogout, tier, user } from './auth';
+import { TIER_LABEL, auditProfile, canAdmin, doLogin, doLogout, method, securityLevels, tier, user } from './auth';
 
 const name = ref('');
 const pass = ref('');
 const err = ref('');
 const working = ref(false);
+const formOpen = ref(false);
+const tierTitle = computed(() => `Tier from permissions. Security levels: ${securityLevels.value.length ? securityLevels.value.join(', ') : 'none'}`);
 
 async function submit(): Promise<void> {
   if (working.value || !name.value || !pass.value) return;
@@ -16,6 +18,7 @@ async function submit(): Promise<void> {
   try {
     await doLogin(name.value.trim(), pass.value);
     pass.value = '';
+    formOpen.value = false;
   } catch (e) {
     err.value = e instanceof Error ? e.message : 'Login failed.';
   } finally {
@@ -73,18 +76,29 @@ const hhmmss = (ms: number) => new Date(ms).toLocaleTimeString([], { hour12: fal
 
 <template>
   <Panel title="Identity" hotkey="L">
-    <template #head><span class="chip" :class="tier">{{ TIER_LABEL[tier] }}</span></template>
+    <template #head><span class="chip" :class="tier" :title="tierTitle">{{ method === 'web' ? `Gateway session · ${user} · ` : '' }}{{ TIER_LABEL[tier] }}</span></template>
 
-    <div v-if="user" class="who">
-      <div><b>{{ user }}</b><small>{{ TIER_LABEL[tier] }} session</small></div>
-      <button @click="doLogout">Log out</button>
+    <div v-if="method === 'bearer'" class="who">
+      <div><b>{{ user }}</b><small :title="tierTitle">{{ TIER_LABEL[tier] }} session</small></div>
+      <div class="acts">
+        <button @click="doLogout()">Log out</button>
+        <details><summary>More</summary><button @click="doLogout(true)">Log out everywhere</button></details>
+      </div>
     </div>
-    <form v-else class="login" @submit.prevent="submit">
-      <p class="note">Read-only until you log in. Operator can acknowledge and run scenarios; Director also sets speed and the raw scenario and sees the audit view.</p>
+    <div v-else-if="method === 'web'" class="who web">
+      <div>
+        <small>Gateway session</small><b>{{ user }}</b><small :title="tierTitle">{{ TIER_LABEL[tier] }}</small>
+        <p class="note">You are identified by your Ignition gateway login. Tiers come from that account's roles.</p>
+      </div>
+      <button v-if="!formOpen" @click="formOpen = true">Log in as a different user</button>
+    </div>
+    <form v-if="method === null || (method === 'web' && formOpen)" class="login" @submit.prevent="submit">
+      <p v-if="method === null" class="note">Viewer (API key), read-only until you log in. Operator can acknowledge and run scenarios; Director also sets speed and the raw scenario and sees the audit view.</p>
       <label>User<input v-model="name" autocomplete="username" spellcheck="false" /></label>
       <label>Password<input v-model="pass" type="password" autocomplete="current-password" /></label>
       <p v-if="err" class="err" role="alert">{{ err }}</p>
       <button type="submit" :disabled="working || !name || !pass">{{ working ? 'Signing in…' : 'Log in' }}</button>
+      <button v-if="method === 'web'" type="button" @click="formOpen = false">Cancel</button>
     </form>
 
     <template v-if="auditProfile">
@@ -109,6 +123,8 @@ const hhmmss = (ms: number) => new Date(ms).toLocaleTimeString([], { hour12: fal
 .chip.operator { color: var(--ok); } .chip.director { color: var(--feed-b); } .chip.viewer { color: var(--info); }
 .who { display: flex; justify-content: space-between; align-items: center; padding: var(--space-2) var(--space-3); background: var(--bg-2); border-radius: var(--radius-3); }
 .who b { color: var(--fg-0); display: block; } .who small { color: var(--fg-2); }
+.who.web { display: grid; gap: var(--space-2); justify-content: stretch; }
+.acts { display: grid; gap: 4px; justify-items: end; } .acts summary { color: var(--fg-2); font-size: var(--text-xs); cursor: pointer; }
 .login { display: grid; gap: var(--space-2); }
 label { display: grid; gap: 2px; color: var(--fg-2); font-size: var(--text-xs); letter-spacing: 0.06em; }
 input { font: 500 var(--text-sm) var(--font-mono); background: var(--bg-2); color: var(--fg-0); border: 1px solid var(--line-strong); border-radius: var(--radius-2); padding: 6px 8px; }

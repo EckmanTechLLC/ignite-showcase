@@ -3,7 +3,7 @@ import { defineAsyncComponent, onBeforeUnmount, onMounted, watch } from 'vue';
 import AlarmBoard from './alarms/AlarmBoard.vue';
 import ControlsPanel from './controls/ControlsPanel.vue';
 import IdentityPanel from './identity/IdentityPanel.vue';
-import { TIER_LABEL, startAuth, tier } from './identity/auth';
+import { TIER_LABEL, method, startAuth, tier, user } from './identity/auth';
 import { startAlarms, activeRows, hasCritical } from './alarms/store';
 import { panel, togglePanel, toasts, type PanelKey } from './ui';
 import { selection } from '../selection';
@@ -52,7 +52,7 @@ watch(selection, (s) => {
       <b>{{ d.hot }}</b><span>{{ d.label }}</span>
       <i v-if="d.key === 'alarms' && activeRows.length" class="n">{{ activeRows.length }}</i>
     </button>
-    <div class="tier" :class="tier" title="Session tier">{{ TIER_LABEL[tier] }}</div>
+    <div class="tier" :class="tier" :title="method === 'web' ? `Gateway session: ${user}` : 'Session tier'">{{ method === 'web' ? 'Gateway ' : '' }}{{ TIER_LABEL[tier] }}</div>
   </nav>
 
   <AlarmBoard v-if="panel === 'alarms'" />

@@ -14,11 +14,17 @@ export interface SessionState {
   tier: Tier;
   canWrite: boolean;
   canAdmin: boolean;
-  /** True while a token is stored (a logged-in user, as opposed to the API key alone). */
+  /** True when the gateway identified a user (Bearer login or Ignition web session), as opposed to the API key alone. */
   loggedIn: boolean;
+  /** How the gateway identified the viewer: null = site API key only. 'apiKey' is folded into null. */
+  authMethod: 'bearer' | 'web' | null;
+  /** True only for a Bearer session (the only kind Log out can end). */
+  canLogout: boolean;
+  /** Raw Ignition security levels, shown in a tooltip; the tier is computed from permissions only. */
+  securityLevels: string[];
 }
 
-const ANON: SessionState = { user: null, tier: 'Viewer', canWrite: false, canAdmin: false, loggedIn: false };
+const ANON: SessionState = { user: null, tier: 'Viewer', canWrite: false, canAdmin: false, loggedIn: false, authMethod: null, canLogout: false, securityLevels: [] };
 
 let state: SessionState = ANON;
 const listeners = new Set<() => void>();
@@ -40,17 +46,16 @@ export function useSession(): SessionState {
   );
 }
 
-/** Read /auth/session and map permissions to a tier. Without a stored token the user is a Viewer. */
+/**
+ * Read /auth/session and map permissions to a tier. Called even without a stored token: a gateway admin signed in to
+ * the Ignition web UI in this browser arrives as authMethod 'web'. A stored token the server did not accept is dropped.
+ */
 export async function refreshSession(): Promise<void> {
-  if (!getToken()) {
-    set(ANON);
-    return;
-  }
   try {
     const s = await apiSession();
-    // An expired or unknown token falls back to the site key: the gateway answers 200 as 'api-key:<site>'.
-    if (!s.user || s.user.startsWith('api-key:')) {
-      clearToken();
+    const method = s.authMethod === 'bearer' || s.authMethod === 'web' ? s.authMethod : null;
+    if (method !== 'bearer' && getToken()) clearToken();
+    if (!method || !s.user || s.user.startsWith('api-key:')) {
       set(ANON);
       return;
     }
@@ -62,6 +67,9 @@ export async function refreshSession(): Promise<void> {
       canWrite,
       canAdmin,
       loggedIn: true,
+      authMethod: method,
+      canLogout: s.canLogout === true && method === 'bearer',
+      securityLevels: s.securityLevels ?? [],
     });
   } catch (e) {
     if (e instanceof HttpError && e.status === 401) set(ANON);
@@ -83,20 +91,25 @@ export async function signIn(username: string, password: string): Promise<string
   return null;
 }
 
-export async function signOut(): Promise<void> {
+export async function signOut(everywhere = false): Promise<void> {
+  let loggedOut = 0;
   try {
-    await apiLogout();
+    loggedOut = (await apiLogout({ everywhere })).loggedOut;
   } catch {
     clearToken();
   }
-  set(ANON);
-  toast('Signed out. Viewing as Viewer.', 'warn');
+  await refreshSession();
+  if (loggedOut > 0) {
+    toast(state.authMethod === 'web' ? `Signed out. Back to your gateway session (${state.user}).` : 'Signed out. Viewing as Viewer.', 'warn');
+  } else {
+    toast('No login session to end.', 'warn');
+  }
 }
 
 /** Call once at start: restore a stored token and fall back to Viewer on any 401. */
 export function startSession(): void {
   onUnauthorized(() => {
-    set(ANON);
+    void refreshSession();
     toast('Session expired. Back to Viewer.', 'warn');
   });
   void refreshSession();

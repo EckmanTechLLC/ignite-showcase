@@ -37,6 +37,14 @@ The UI is role-generic (ADR-005 section 7) and reads `/auth/session` `permission
 | Operator | `permissions.canWrite` | Alarm acknowledge; Start count, Hold (reason), Resume, Abort, Recycle, Restart count, Go/No-Go overrides |
 | Director | `permissions.canAdmin` | Operator plus scenario launcher, speed, fault injectors, audit ticker |
 
+### Identity states
+
+The Identity panel shows how the gateway identified you (`/auth/session` `authMethod`):
+
+- **Viewer (API key)** (`null`): only the site key; a login form is shown.
+- **Gateway session** (`web`): you are signed in to the Ignition gateway web UI in this browser, so the gateway identifies you by that account; tiers come from that account's roles and the raw `securityLevels` are in the tier tooltip. There is nothing to log out of here (`canLogout` is false); **Log in as a different user** opens the form, and the resulting Bearer login overrides the web session (ADR-004 section 1).
+- **Bearer** (`bearer`): a login from this panel; shows the tier with **Log out** (and **Log out everywhere** under More). After a Bearer logout the panel falls back to the Gateway session state if there is one, else to the form.
+
 An expired token comes back from the gateway as a key-only session (not a 401); the client re-checks `/auth/session` every 30 s and after any 403, and drops to Viewer on the `unauthorized` event.
 
 ## Restarting the count
@@ -61,8 +69,8 @@ Every Ignite route and where the UI uses it.
 | `POST /script/library` | write | Controls panel: `launch.status/start_count/hold/resume/abort/recycle/set_go/set_scenario/set_speed/inject_fault` |
 | `POST /script/system` | write | n/a: no raw `system.*` calls from a browser demo; the library is the whole command surface |
 | `POST /auth/login` | none | Identity panel; 401 is a generic message, 429 shows the `Retry-After` lockout time |
-| `GET /auth/session` | token | Session chip and tier (Viewer / Operator / Director) |
-| `POST /auth/logout` | token | Identity panel: **Log out** |
+| `GET /auth/session` | token | Session chip and tier (Viewer / Operator / Director); `authMethod` (`bearer` / `web` / `apiKey` / null) picks the panel state, `canLogout` gates **Log out**, `securityLevels` feed the tooltip |
+| `POST /auth/logout` | token | Identity panel: **Log out** / **Log out everywhere** (`{"everywhere":true}`); 400 for non-bearer callers is treated as nothing logged out |
 | `GET /audit/logs` | admin | Audit ticker in the Identity panel (Director): last 15 min, every 10 s |
 | `POST /db/query` (named queries) | key | n/a: the lab has no database connection, so there is no named query to run (ADR-005 allows the panel to be absent) |
 

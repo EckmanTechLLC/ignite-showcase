@@ -7,14 +7,23 @@ export type Tier = 'anonymous' | 'viewer' | 'operator' | 'director';
 
 export const current = shallowRef<Session | null>(null);
 
+/** How the gateway identified the viewer. 'apiKey' (site key alone) counts as nobody. */
+export const method = computed<'bearer' | 'web' | null>(() => {
+  const m = current.value?.authMethod;
+  return m === 'bearer' || m === 'web' ? m : null;
+});
+
 export const user = computed(() => {
   const u = current.value?.user ?? null;
-  return u && !u.startsWith('api-key:') ? u : null;
+  return method.value && u && !u.startsWith('api-key:') ? u : null;
 });
+
+export const canLogout = computed(() => method.value === 'bearer' && current.value?.canLogout === true);
+export const securityLevels = computed(() => current.value?.securityLevels ?? []);
 
 export const tier = computed<Tier>(() => {
   const s = current.value;
-  if (!s || !user.value || !getToken()) return 'anonymous';
+  if (!s || !user.value) return 'anonymous';
   if (s.permissions.canAdmin) return 'director';
   if (s.permissions.canWrite) return 'operator';
   return 'viewer';
@@ -37,6 +46,8 @@ export const auditProfile: string = (() => {
 export async function refreshSession(): Promise<void> {
   try {
     current.value = await session();
+    // A stored token the server did not accept (bearer wins when valid) is dead: drop it.
+    if (current.value.authMethod !== 'bearer' && getToken()) clearToken();
   } catch {
     current.value = null;
   }
@@ -55,14 +66,16 @@ export async function doLogin(username: string, password: string): Promise<void>
   toast(`Signed in as ${TIER_LABEL[tier.value]}`, 'ok');
 }
 
-export async function doLogout(): Promise<void> {
+export async function doLogout(everywhere = false): Promise<void> {
+  let loggedOut = 0;
   try {
-    await logout();
+    loggedOut = (await logout({ everywhere })).loggedOut;
   } catch {
     clearToken();
   }
   await refreshSession();
-  toast('Signed out', 'info');
+  if (loggedOut > 0) toast(method.value === 'web' ? `Signed out. Back to your gateway session (${user.value}).` : 'Signed out', 'info');
+  else toast('No login session to end.', 'warn');
 }
 
 let started = false;
