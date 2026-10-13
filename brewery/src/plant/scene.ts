@@ -137,6 +137,7 @@ export async function createScene(host: HTMLElement, hooks: SceneHooks): Promise
     things.addChild(v.root);
     entities.push({ id: spec.id, kind: 'vessel', root: v.root, setSelected: (s) => v.setSelected(s), setHovered: (s) => v.setHovered(s), center: () => v.center() });
   }
+  const vesselLabels = new Set(vessels.map((v) => v.root.label));
   const equips: Equip[] = [];
   for (const spec of EQUIP) {
     const e = new Equip(spec, { textRes, cacheRes: textRes });
@@ -300,15 +301,17 @@ export async function createScene(host: HTMLElement, hooks: SceneHooks): Promise
     if (reduced && !wasReduced) steam.clear();
     wasReduced = reduced;
 
-    // selection highlight
+    // selection highlight (a selected batch lights the vessel that holds it)
     const sel = hooks.getSelection();
     const sk = sel ? `${sel.kind}:${sel.id}` : '';
     if (sk !== selKey) {
       selKey = sk;
-      for (const e of entities) e.setSelected(`${e.kind}:${e.id}` === sk);
+      for (const e of entities) if (!vesselLabels.has(e.id)) e.setSelected(`${e.kind}:${e.id}` === sk);
     }
+    const batchSel = sel?.kind === 'batch' ? sel.id : '';
 
     for (const v of vessels) {
+      v.setSelected(sk === `vessel:${v.root.label}` || (batchSel !== '' && v.batch === batchSel));
       v.update(clock, dt, reduced);
       if (v.steamRate > 0) {
         const p = v.steamPoint();

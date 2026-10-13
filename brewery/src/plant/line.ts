@@ -97,7 +97,17 @@ class Machine {
     this.art.addChild(this.label);
     this.art.cacheAsTexture({ resolution: ctx.cacheRes, antialias: true });
     root.addChild(this.art, this.halo);
-    root.hitArea = new Rectangle(-w * 5 - 8, -h * 6 - 40, w * 10 + 16, h * 6 + 80);
+    root.hitArea = new Rectangle(...this.bounds(8));
+  }
+
+  /** Screen-space rectangle (local) around the box, its top gear and the lamp, grown by `pad`. */
+  private bounds(pad: number): [number, number, number, number] {
+    const w = MACHINE_W[this.index];
+    const h = MACHINE_H[this.index];
+    const half = (w / 2 + 2.5) * 7;
+    const top = -h * 6 - (w / 2 + 2.5) * 3.5 - 26;
+    const bottom = (w / 2 + 2.5) * 3.5 + 8;
+    return [-half - pad, top - pad, half * 2 + pad * 2, bottom - top + pad * 2];
   }
 
   center(): { x: number; y: number } {
@@ -122,11 +132,9 @@ class Machine {
     const hk = `${fault}|${this.selected}|${this.hovered}`;
     if (hk !== this.haloKey) {
       this.haloKey = hk;
-      const w = MACHINE_W[this.index];
-      const h = MACHINE_H[this.index];
       this.halo.clear();
       const col = fault ? 0xff4d4d : this.selected ? 0xd4874a : this.hovered ? 0xe8eef6 : -1;
-      if (col >= 0) this.halo.roundRect(-w * 5 - 4, -h * 6 - 22, w * 10 + 8, h * 6 + 52, 8).stroke({ color: col, width: this.selected || fault ? 3 : 2 });
+      if (col >= 0) this.halo.roundRect(...this.bounds(2), 8).stroke({ color: col, width: this.selected || fault ? 3 : 2 });
     }
     this.halo.alpha = fault && !reduced ? 0.45 + 0.55 * (0.5 + 0.5 * Math.sin(t * 7)) : 1;
   }
