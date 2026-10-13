@@ -17,6 +17,9 @@ sim/
   microgrid/              Demo 3 - Campus Microgrid (see microgrid/README.md)
     tags.json             405 tags under [default]MG/
     project/              same layout: timer/mg_sim, script-python/mg
+  brewery/                Demo 4 - Craft Brewery (see brewery/README.md)
+    tags.json             1039 tags under [default]BR/
+    project/              same layout: timer/br_sim, script-python/brew
   scripts/
     load-tags.mjs         load a tag model through Ignite (operator tier)
     install-project.sh    copy project resources to the gateway host and restart the gateway
