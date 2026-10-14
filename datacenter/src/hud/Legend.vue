@@ -19,7 +19,7 @@ const pct = (t: number) => `${(heatPos(t) * 100).toFixed(1)}%`;
     <div class="ashrae"><span :style="{ left: pct(T_RECOMMENDED) }">27&deg; ASHRAE rec. max</span><span class="b" :style="{ left: pct(T_ALLOWABLE) }">32&deg; A1 allowable</span></div>
     <h2 class="rows">Rows</h2>
     <table>
-      <thead><tr><th /><th>kW</th><th>IN avg</th><th>IN max</th><th>OUT</th></tr></thead>
+      <thead><tr><th><span class="vh">Row</span></th><th>kW</th><th>IN avg</th><th>IN max</th><th>OUT</th></tr></thead>
       <tbody>
         <tr v-for="(r, i) in ROW_NAMES" :key="r">
           <th scope="row">{{ r }}</th>
@@ -47,6 +47,7 @@ h2.rows { margin-top: 10px; }
 .ashrae { height: 24px; }
 table { width: 100%; border-collapse: collapse; }
 th { color: var(--fg-2); font-weight: 500; text-align: right; padding: 1px 0; }
+.vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 tbody th { text-align: left; color: var(--fg-0); font-weight: 700; }
 td { text-align: right; padding: 1px 0; color: var(--fg-0); }
 td.out { color: #ffb27a; }
