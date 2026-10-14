@@ -26,7 +26,7 @@ Please open `<site>/launch/?perf` and `<site>/datacenter/?perf`, let each run fo
 
 ## Results (software-rendered, CPU-side)
 
-### Data center (SVG hall, 1 766 to 1 772 DOM nodes)
+### Data center (task-59 SVG hall, 1 766 to 1 772 DOM nodes; superseded by the 3D hall, see the Data Center (task-81) section below)
 
 | Metric | 1080p before | 1080p after | 4K before | 4K after |
 |---|---|---|---|---|
@@ -239,3 +239,76 @@ No performance change was made: the main thread is not the limit, and the Lighth
 | Lighthouse accessibility at least 90 | Met: 100 |
 | Pixi chunk lazy | Met: about 585 kB raw, 174 kB gzip, only after first paint |
 | Heap flat over 25 min including an SSE reconnect | Met: 13.0 to 13.3 MB over minutes 10 to 25 |
+
+## Data Center (task-81; 3D hall task-80 and detail pass task-84, previous SVG hall task-59)
+
+Vue 3 shell over a TresJS (Three.js 0.186) procedural hall: 60 instanced racks, 4 CRAHs, 2 chillers, UPS A/B, 6 PDUs, ATS, generator, busways and chilled-water pipework, one 6 000-particle GPU airflow pool, 675 tags in one `[default]DC/**` subscription. Same method as above: headless Chrome 147, **software raster (SwiftShader), no GPU on this box**, deployed page with `?perf`, 45 s windows after a **45 s** warm-up (the first runs with a 12 s warm-up caught the scene start-up, a single 7.1 s task, and are not used), live data, sim at 4x. fps and frame times are software-rendered and are not GPU results; **GPU fps is operator-reported** (rows pending). The task-59 column is the old SVG hall on the same box, for before/after.
+
+### Results (software-rendered, CPU-side)
+
+| Metric | 1080p run 1 / 2 | 4K run 1 / 2 | task-59 SVG hall, 1080p / 4K (after) |
+|---|---|---|---|
+| fps (software raster) | 0.40 / 0.44 | 0.21 / 0.20 | 39.0 / 11.2 |
+| frame p50 / p95 (ms) | 2 250 / 7 733 and 2 233 / 5 366 | 5 916 / 13 866 and 6 100 / 10 750 | 25.9 / 63.0 and 81.5 / 233.3 |
+| main thread (ms per s) | 40 / 26 | 24 / 23 | 622 / 290 |
+| script (ms per s) | 24 / 13 | 9 / 10 | 14 / 9 |
+| style recalc / layout (ms per s) | 0.2 / 0.5 and 0.2 / 0.5 | 0.1 / 0.2 and 0.1 / 0.2 | 100 / 21 and 41 / 12 |
+| long tasks (count / total ms, 45 s) | 1 / 542 and 0 / 0 | 0 / 0 and 0 / 0 | 36 / 2 432 and 54 / 3 775 |
+| DOM nodes | 172 | 172 | 1 766 to 1 772 |
+| draw calls / triangles | 103 / 352 148 | 103 / 352 148 | n/a (SVG) |
+| particles alive (pool 6 000) | 4 787 to 4 795 | 4 785 to 4 793 | n/a |
+| SSE batches/s, updates/s | 1, 245 to 247 | 1, 250 | 1.0, 243 |
+
+Reading: unlike the Pixi scenes, the main thread is almost idle (24 to 40 ms/s, no long tasks in three of four runs): the frame is rendered by the software rasteriser in the GPU process, at about 2.2 s per frame at 1080p and 6 s at 4K (2.7x the pixels). That is the cost of about 350 k triangles with PBR materials, environment lighting, fog and a shadow map rendered without a GPU, so the 39 fps of the SVG hall is not comparable and the drop is not what a GPU would show. The hardware-independent budgets are met: 103 draw calls (budget 150; 93 to 103 across presets 1 to 5), 352 k triangles (budget 300 to 500 k), 4.8 k live particles of the 6 000 pool, 172 DOM nodes (SVG hall: 1 772), 1 SSE batch per second, 0 external requests, 0 console errors. Script is 9 to 24 ms/s at about 245 tag updates/s. The first runs (12 s warm-up) also showed the scene start-up: one 7.1 s long task and transient 122 calls / 492 k triangles while the camera and shadow map settled. GPU fps unverified (operator).
+
+### Heap (leak check)
+
+Forced GC every 5 minutes, deployed page with `?perf`, 1080p, 25 minutes (crosses the gateway's 20 minute SSE `reconnect`); the site key was set once and not rotated during the run.
+
+| Time (min) | 0 | 5 | 10 | 15 | 20 | 25 |
+|---|---|---|---|---|---|---|
+| Heap (MB) | 7.9 | 8.6 | 8.8 | 9.0 | 9.0 | 9.0 |
+| task-59 (SVG hall, MB) | 3.5 | 3.8 | 4.1 | 4.1 | 4.1 | 4.1 |
+
+Flat from minute 15 (0.0 MB over minutes 15 to 25, across the reconnect at about minute 20; +0.2 MB over minutes 10 to 15). The larger absolute value against the SVG page is the scene (geometry, textures, atlas) and the three/tres runtime. DOM nodes 171 throughout, 0 console errors, 0 non-gateway requests. Updates per second after the reconnect: the readout is only refreshed between software frames, so many samples read 0; the non-zero samples were 246 to 332 (mean 279) in the first 20 minutes and 242 to 261 (mean 247) after, with 1 batch per second throughout. The run used the build before the legend `th` fix below (no render change).
+
+### Bundle (production build)
+
+HallCanvas lazy chunk (three, TresJS, cientos, hall) 1 041 kB raw / 283 gz (task-84; task-80 was 987 / 265); main `index` 132 kB (49 kB gz); ECharts is a separate lazy chunk. Unchanged by this task.
+
+### Lighthouse (desktop preset, deployed page, software GL)
+
+| Run | Performance | Accessibility | Best practices | SEO | FCP | LCP | TBT | Speed index |
+|---|---|---|---|---|---|---|---|---|
+| task-59 SVG hall, deployed | 61; later 63 / 72 | 100 | 79 | n/a | 0.5 to 1.0 s | 1.2 to 1.4 s | 580 to 990 ms | n/a |
+| 3D hall run 2 | 47 | 100 | not computed | 82 | 0.6 s | 2.4 s | 27.6 s | 15.2 s |
+| 3D hall run 4 | 58 | 100 | not computed | 82 | 0.6 s | 1.1 s | 24.2 s | 15.1 s |
+| 3D hall run 5 | 58 | 100 | not computed | 82 | 0.5 s | 1.1 s | 25.9 s | 16.8 s |
+| 3D hall run 1 and run 3 | no report (unhandled rejection "Promise was collected"; PAGE_HUNG) | | | | | | | |
+
+Five default runs (`--preset=desktop`, Lighthouse 12.8.2, headless Chrome 147, SwiftShader): three returned a report with every audit that is computed from the trace (performance **47 / 58 / 58**, accessibility 100, SEO 82) but each ended with `PROTOCOL_TIMEOUT` on the final main-document body fetch (so best practices is missing), and two produced nothing usable. Four further attempts with relaxed settings (`throttlingMethod: provided`, 240 s load wait, 300 s protocol timeout) failed the same way (one PROTOCOL_TIMEOUT, one PAGE_HUNG, two stopped by me after about 6 minutes without a report), so the spread is n = 3 partial runs, not five clean ones. The cause is the page itself: the GPU process spends about 2 s per frame in software raster, so DevTools requests queue behind it. TBT 24 to 28 s is that software rendering during the load window (the Launch scene shows the same 20 s). FCP stays 0.5 to 0.6 s and LCP 1.1 to 2.4 s because the HUD paints before the lazy hall chunk. Best practices was 79 on the task-59 build (`is-on-https` and `redirects-http`, the lab gateway is plain HTTP); SEO 82 (not investigated). Nothing changed for these numbers.
+
+### Accessibility
+
+axe-core 4.x (wcag2a, wcag2aa, best-practice), deployed page at 1080p, in 12 states (idle, `T`, `A`, `C`, `L`, `?`, camera presets `1` to `5`, `R`): the first pass (deploy ffdf371) found **one minor violation in every state**, `empty-table-header` on the first `th` of the Legend rows table. Fixed (visually hidden "Row" text, commit ef40cfc); after the redeploy (76aa551) **0 violations in all 12 states**. Logged-in state not run.
+
+### What changed because of the numbers
+
+| Change | Before | After |
+|---|---|---|
+| Legend table: the empty first column header gets visually hidden text "Row" (`datacenter/src/hud/Legend.vue`) | axe `empty-table-header` (minor) in 12 of 12 states | 0 violations in 12 of 12 states |
+| Render cost, draw calls, particles | not changed: the cost is software fill rate in the GPU process, not script, layout or leaks; budgets met; no clear low-risk win without a GPU measurement | |
+
+Candidates for a future pass if an operator GPU run shows a problem: cap the pixel ratio at 4K, halve the particle pool, skip the shadow map at overview.
+
+### ADR-005 section 7 and Amendment A3 status for the data center
+
+| Target | Status |
+|---|---|
+| 60 fps / at least 55 fps at 1080p on an integrated GPU | **Unverified on a GPU.** Software raster here gives about 0.4 fps at 1080p and 0.2 fps at 4K (about 350 k triangles); the operator should paste the `?perf` readout from a real machine |
+| Lighthouse performance at least 90 | **Not met here** (see the table; software WebGL), recorded as for Launch, Microgrid and Brewery |
+| Lighthouse accessibility at least 90 | Met: 100 |
+| Draw calls at most 150, triangles 300 to 500 k | Met (93 to 103, 316 to 352 k) |
+| No runtime calls to any host except the gateway | Met: `externalRequests` empty in every run |
+| Fonts bundled | Met (shared theme fonts) |
+

@@ -20,11 +20,11 @@ gateway injects `window.__IGNITE_ENV__` (gateway URL, site, read key, and `IGNIT
 
 ## Screenshots
 
-Headless Chrome, 1920x1080, live data (these show the SVG hall of tasks 56-59; refreshed for the 3D hall in task-81).
+Headless Chrome, 1920x1080, live data, software GL (task-81).
 
-![Hall overview](../docs/screenshots/datacenter-hall.png)
-![Alarm board](../docs/screenshots/datacenter-alarms.png)
-![Trends with a rack selected](../docs/screenshots/datacenter-trends.png)
+![Hall overview: heat caps, airflow particles, roof chillers](../docs/screenshots/datacenter-hall3d.png)
+![Hot aisle during dc.fail_crah(2): rows C and D red, THERMAL EVENT, alarms rising](../docs/screenshots/datacenter-airflow-crah-fail.png)
+![Electrical room on generator after utility loss: amber generator busway, UPS A/B, PDUs](../docs/screenshots/datacenter-electrical.png)
 
 ## Performance
 
