@@ -1,1 +1,0 @@
-export{t as WebGPURenderer}from"./scene-CYroeOWG.js";

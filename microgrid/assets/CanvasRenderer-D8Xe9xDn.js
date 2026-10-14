@@ -1,0 +1,1 @@
+export{r as CanvasRenderer}from"./scene-Nb3jYRzn.js";
