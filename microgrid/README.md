@@ -38,13 +38,13 @@ alarms, dispatch and scenario controls, identity panel, audit) were added in tas
 
 Headless Chrome, 1920x1080, live data (software-rendered, so only the look is representative).
 
-![Midday: PV, BESS and EV flows (screenshot predates the map, refreshed in task-83)](../docs/screenshots/microgrid-scene.png)
-![Trends panel: forecast vs actual, import vs demand limit, BESS SOC, cost vs baseline](../docs/screenshots/microgrid-trends.png)
-![Grid outage: island, genset start, curtailed PV and the alarm board with the fault cascade](../docs/screenshots/microgrid-island-alarms.png)
+![Noon: PV fields, BESS, EV canopies, genset and substation with live flows](../docs/screenshots/microgrid-campus-noon.png)
+![Evening under heavy cloud: street lights, lit windows, grid import](../docs/screenshots/microgrid-campus-night-cloud.png)
+![Grid outage: utility link open, genset RUN, BESS forming the grid, EV bays curtailed](../docs/screenshots/microgrid-island.png)
 
 ## Performance
 
-`?perf` shows a readout (fps, frame time p50/p95/max, DOM nodes, SSE batches/s, updates/s, sprites, particles, draw calls); `P` toggles it. Measurements: [`docs/perf.md`](../docs/perf.md).
+`?perf` shows a readout (fps, frame time p50/p95/max, DOM nodes, SSE batches/s, updates/s, sprites, particles, draw calls); `P` toggles it. Measurements (campus scene, close-out task-83): [`docs/perf.md`](../docs/perf.md).
 
 ## Connection model
 

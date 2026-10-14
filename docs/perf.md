@@ -111,68 +111,67 @@ Not performance, but changed in this task: `?` help/about overlay and `?about` i
 | Fonts and assets bundled, licences recorded | Met (`docs/ASSETS.md` unchanged) |
 | Contrast of HUD text at least 4.5:1 | Met for tokens and for everything `axe` checks; the rack tiles in the data center put white text with a dark outline on the heat colours, which `axe` cannot evaluate |
 
-## Campus Microgrid (task-69)
+## Campus Microgrid (task-83; campus scene task-82 and task-85, previous SVG diagram task-69)
 
-Svelte 5 single-line diagram (about 465 DOM nodes, 405 tags in one `[default]MG/**` subscription). Same method as above: headless Chrome 147, **software raster, no GPU on this box**, deployed page with `?perf`, 12 s warm-up then 45 s, live data, the sim at 120x. fps and frame times are software-rendered and are not GPU results; **GPU fps is operator-reported** (the operator rows below are pending).
+PixiJS 8 oblique 2.5D campus map (about 160 DOM nodes, 173 to 189 sprites, 405 tags in one `[default]MG/**` subscription). Same method as above: headless Chrome 147, **software raster (SwiftShader), no GPU on this box**, deployed page with `?perf`, 12 s warm-up then 45 s, live data, the sim at 120x and noon. fps and frame times are software-rendered and are not GPU results; **GPU fps is operator-reported** (rows pending). The task-69 column is the old SVG diagram on the same box, for before/after.
 
 ### Results (software-rendered, CPU-side)
 
-| Metric | 1080p run 1 / 2 | 4K run 1 / 2 | 1080p, Trends open before | 1080p, Trends open after |
-|---|---|---|---|---|
-| fps (software raster) | 59.6 / 59.1 | 35.6 / 34.5 | 50.7 | 55.8 / 58.3 |
-| frame p50 / p95 (ms) | 16.7 / 16.8 (both runs) | 25.9 / 50.0 and 27.8 / 51.9 | 16.7 / 40.8 | 16.7 / 27.8 and 16.7 / 16.8 |
-| main thread (ms per s) | 283 / 360 | 185 / 189 | 529 | 349 / 363 |
-| script (ms per s) | 23 / 29 | 17 / 18 | 188 | 49 / 50 |
-| style recalc (ms per s) | 41 / 52 | 26 / 26 | 45 | 41 / 34 |
-| layout (ms per s) | 39 / 52 | 27 / 27 | 47 | 41 / 39 |
-| long tasks (count / total ms) | 0 / 0 and 1 / 67 | 0 / 0 (both) | 3 / 252 (max 102) | 2 / 128 and 1 / 52 |
-| DOM nodes | 464 | 464 | 515 | 515 |
-| SSE batches/s, updates/s | 1.1, 163 and 1.0, 190 | 1.1, 185 and 1.0, 189 | | |
+| Metric | 1080p run 1 / 2 | 4K run 1 / 2 | task-69 SVG diagram, 1080p / 4K |
+|---|---|---|---|
+| fps (software raster) | 3.0 / 3.2 | 1.2 / 1.2 | 59.6, 59.1 / 35.6, 34.5 |
+| frame p50 / p95 (ms) | 333 / 483 and 300 / 467 | 800 / 1 717 and 1 017 / 1 450 | 16.7 / 16.8 and 25.9 / 50.0 |
+| main thread (ms per s) | 993 / 993 | 997 / 998 | 283, 360 / 185, 189 |
+| script (ms per s) | 33 / 29 | 13 / 13 | 23, 29 / 17, 18 |
+| style recalc (ms per s) | 2.3 / 2.3 | 1.0 / 0.9 | 41, 52 / 26 |
+| layout (ms per s) | 4.4 / 4.3 | 1.5 / 1.4 | 39, 52 / 27 |
+| long tasks (count / total ms, 45 s) | 146 / 46 195 and 141 / 46 124 (max 550 / 624) | 51 / 49 323 and 44 / 49 466 (max 1 464 / 1 615) | 0, 1 / 0, 0 |
+| DOM nodes | 163 | 162 to 163 | 464 |
+| sprites | 173 | 173 and 188 to 189 | n/a (SVG) |
+| particles | 113 to 183 | 148 to 206 | n/a |
+| draw calls | 18 to 31 | 17 to 35 | n/a |
+| SSE batches/s, updates/s | 1, about 185 | 1, about 180 to 200 (some 2 s samples at about 360) | 1, 163 to 190 |
 
-The first four columns are one build (no rendering change was made for the diagram: flows are Web Animations from the start, 0 running animations under reduced motion, task-67). The 4K run is raster-bound in software (35 fps, p95 50 ms); the main thread is under 20 % busy. "Trends open" is the same page after pressing `T` (five ECharts charts, history already loaded); "before" is the deployed task-68 build measured on the deployed page, "after" is the task-69 build served through a local proxy to the same gateway (the numbers are therefore a small apples-to-oranges difference in transport only; each runs 45 s).
+Reading: the scene is fill-rate bound under SwiftShader (the "GPU" is the main thread: 99 % busy in both viewports, script only 13 to 33 ms/s, layout and style negligible). The long tasks are the software raster of each frame (146 tasks of about 315 ms at 1080p). That is the cost of the GPU scene rendered without a GPU and is not representative of an integrated GPU, which is why the old SVG diagram (browser compositor, 60 fps in software) is not comparable. The budgets that are hardware independent are met: 173 to 189 sprites (budget 400), 17 to 35 draw calls (budget 40, 18 to 31 at 1080p), one SSE batch per second, 0 external requests, 0 console errors. 4 fps in task-82 and 3 fps now are the same order; the oblique detail pass of task-85 added about 115 sprites and 10 draw calls. GPU fps unverified (operator).
 
 ### Heap (leak check)
 
-Forced GC every 60 s, deployed page, 1080p, 25 minutes (crosses the gateway's 20 minute SSE `reconnect`).
+Forced GC every 5 minutes, deployed page, 1080p, 25 minutes (crosses the gateway's 20 minute SSE `reconnect`); the site key was set once and not rotated during the run.
 
 | Time (min) | 0 | 5 | 10 | 15 | 20 | 25 |
 |---|---|---|---|---|---|---|
-| Heap (MB) | 2.1 | 2.3 | 2.5 | 2.6 | 2.6 | 2.7 |
+| Heap (MB) | 14.0 | 15.8 | 15.5 | 15.8 | 15.8 | 15.9 |
+| task-69 (SVG diagram, MB) | 2.1 | 2.3 | 2.5 | 2.6 | 2.6 | 2.7 |
 
-The heap climbs from 2.1 to 2.6 MB over the first 15 minutes while the bounded buffers fill (ticker tween, history probe, alarm list) and is then flat (+0.1 MB over minutes 15 to 25, across the reconnect at about minute 19).
+Flat from minute 5 (+0.1 MB over minutes 5 to 25, across the reconnect at about minute 20). The scene's textures and Pixi buffers explain the larger absolute value against the SVG page. DOM nodes 156, 0 console errors, 0 non-gateway requests. The run had no `?perf` readout, so updates per second after the reconnect were not sampled in that run; the later `?perf` traces above show about 185 updates/s on the same deployed page.
 
-DOM nodes stayed at 467 to 482. The stream reconnected at about 19 minutes (the gateway's 20 minute cap) and updates resumed within a second (about 190 per second before and after; 0 console errors, 0 non-gateway requests). A first attempt at this run was discarded: I rotated the site API key 4 minutes into it, so the page reconnected with the old key, got a 401 and stopped receiving data. That is expected behaviour for a rotated key (reload picks up the new one), not a page fault.
+### Bundle (production build)
+
+Scene chunk (lazy `import('./scene')`) 374 kB raw / 115 kB gz plus the other Pixi chunks (about 640 kB raw in total after the detail pass), index 135 kB (48 kB gz); ECharts is a separate lazy chunk. Figures from the task-82 and task-85 builds.
 
 ### Lighthouse (desktop preset, deployed page, software GL)
 
 | Run | Performance | Accessibility | Best practices | FCP | LCP | TBT |
 |---|---|---|---|---|---|---|
-| Before (task-68 build, deployed) | 98 | 100 | 79 | 0.6 s | 1.1 s | 70 ms |
-| After (deployed), 4 runs | 81 / 85 / 82 / 85 | 100 (all) | 79 (all) | 0.5 to 0.6 s | 1.0 to 1.3 s | 260 to 330 ms |
-| A/B, local copies of old and new build, interleaved | old 83 / 86, new 84 / 98 | 100 (all) | 100 (all, no HTTP) | 0.5 to 0.6 s | 1.0 to 1.3 s | old 340 / 260, new 310 / 70 ms |
+| task-69 SVG diagram, deployed | 98; later 81 / 85 / 82 / 85 | 100 | 79 | 0.5 to 0.6 s | 1.0 to 1.3 s | 70 or 260 to 330 ms |
+| Campus scene (task-83), 5 runs | 44 / 48 / 51 / 58 / 59 | 100 (all) | 79 (all) | 0.4 to 0.7 s | 1.0 to 2.9 s | 10.6 to 13.8 s |
 
-The performance score is bimodal on this shared, software-rendered box: runs land either at about 98 (TBT 70 ms) or at 81 to 86 (TBT 260 to 340 ms), for the old and the new build alike (the interleaved A/B above shows both builds in both modes), so the drop from 98 to 81 to 85 after deploy is not a code regression; the bundle is byte-identical in size (148.6 vs 148.7 kB) and the changes do not touch load. What the page does at load is mount about 465 SVG nodes and apply the 405-tag snapshot in one pass; the two fast runs (98) show it can finish inside 70 ms of blocking time.
+TBT is the software-rasterised WebGL frames (about 3 fps, main thread saturated) during Lighthouse's load window, as for the Launch scene and the Brewery. First and largest contentful paint stay at 0.4 to 0.7 s and 1.0 to 2.9 s because the HUD paints before the lazy scene chunk loads. Best practices 79 is `is-on-https` and `redirects-http` only (lab gateway is plain HTTP); SEO 54 is `meta-description` and `is-crawlable` (internal demo, intentionally unindexed). Not changed.
 
-- Best practices 79 is `is-on-https` and `redirects-http` only (lab gateway is plain HTTP). SEO 54 is `meta-description` and `is-crawlable`: the page is an internal demo behind a gateway path, intentionally unindexed; not changed.
-- Accessibility: axe-core (wcag2a, wcag2aa, best-practice) on the deployed page in six states (idle, Trends, Alarms, Controls, Login, Help) at 1080p: **before** idle and Trends: `page-has-heading-one` (1), Trends: `scrollable-region-focusable` (1), Alarms: `color-contrast` (15 nodes: cleared alarm rows at 0.6 opacity gave 2.85:1 and 4.06:1), Help: `landmark-no-duplicate-banner` and `landmark-unique` (the dialog header was a banner); **after**: clean in all six states.
-- Experimental `label-content-name-mismatch` (not scored) lists the diagram's `role="button"` groups whose aria-label does not repeat their visible text; left alone.
+- Accessibility: axe-core (wcag2a, wcag2aa, best-practice) on the deployed page at 1080p in six states (idle, Trends, Alarms, Controls, Login, Help): **0 violations in all six** (nothing to fix; the task-69 fixes carry over). The logged-in state was not run.
 
 ### What changed because of the numbers
 
-| Change | Before | After |
-|---|---|---|
-| Trends: redraw a chart only when a point was added or aged out (every 5 s) instead of every 500 ms poll (`Chart.svelte`) | 1080p with Trends open: script 188 ms/s, main thread 529 ms/s, p95 40.8 ms, 3 long tasks (252 ms) | script 49 to 50 ms/s, main thread 349 to 363 ms/s, p95 16.8 to 27.8 ms, 1 to 2 long tasks (52 to 128 ms) |
-| a11y: sr-only `h1`, dialog header no longer a banner, keyboard focus on the scrollable panel body, cleared alarm rows at 0.9 opacity | six axe violation rules (above) | 0 |
+Nothing: no clear, low-risk win was available (the cost is software fill rate, not script, layout or leaks), so no build changed and no redeploy was needed. Candidates for a future pass if a GPU run shows a problem: lower the render resolution at 4K, halve particle counts, skip the grade pass.
 
-Left alone: the diagram (its main thread is paint and layout of about 465 nodes; 60 fps in software at 1080p), ECharts bundle (lazy, about 556 kB, first loaded on `T`), the 4K frame rate (raster-bound).
-
-### ADR-005 section 7 and Amendment A1 status for the microgrid
+### ADR-005 section 7 and Amendments A1 / A3 status for the microgrid
 
 | Target | Status |
 |---|---|
-| 60 fps / at least 55 fps at 1080p on an integrated GPU | **Unverified on a GPU.** Software raster here gives 59 fps at 1080p and 35 fps at 4K; the operator should paste the `?perf` readout from a real machine |
-| Lighthouse performance at least 90 | **Met in 2 of 9 runs here** (two runs at 98; 81 to 86 otherwise). The spread is environmental (TBT 70 vs 260 to 340 ms for the same bundle). Not claimed as met |
+| 60 fps / at least 55 fps at 1080p on an integrated GPU | **Unverified on a GPU.** Software raster here gives 3 fps at 1080p and 1.2 fps at 4K (fill-rate bound); the operator should paste the `?perf` readout from a real machine |
+| Lighthouse performance at least 90 | **Not met here** (44 to 59, WebGL start-up TBT under software GL), recorded as for Launch and Brewery |
 | Lighthouse accessibility at least 90 | Met: 100 |
+| Draw calls at most 40, sprites at most 400 | Met (17 to 35, 173 to 189) |
 | No runtime calls to any host except the gateway | Met: `externalRequests` empty in every run |
 | Fonts bundled | Met (shared theme fonts) |
 

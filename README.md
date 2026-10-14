@@ -29,11 +29,11 @@ Demo 4, Craft Brewery (headless Chrome, 1920x1080, live data, software GL):
 ![Batch overlay with ISA-88 phases, QA and genealogy](docs/screenshots/brewery-batch-genealogy.png)
 ![Packaging line down: filler jam, OEE tile and HUD](docs/screenshots/brewery-line-down.png)
 
-Demo 3, Campus Microgrid (headless Chrome, 1920x1080, live data):
+Demo 3, Campus Microgrid (oblique 2.5D campus map; headless Chrome, 1920x1080, live data):
 
-![Campus Microgrid, midday](docs/screenshots/microgrid-scene.png)
-![Trends panel](docs/screenshots/microgrid-trends.png)
-![Grid outage with the alarm board](docs/screenshots/microgrid-island-alarms.png)
+![Campus Microgrid, noon: PV, BESS, EV and substation flows](docs/screenshots/microgrid-campus-noon.png)
+![Evening under cloud cover: street lights, lit windows, grid import](docs/screenshots/microgrid-campus-night-cloud.png)
+![Grid outage: link open, genset running, BESS forming the grid, EV curtailed](docs/screenshots/microgrid-island.png)
 
 The other demos' screenshots are in `launch/README.md` and `datacenter/README.md`.
 
