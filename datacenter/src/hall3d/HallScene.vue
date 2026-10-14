@@ -5,7 +5,7 @@ import { useLoop, useTres } from '@tresjs/core';
 import { CameraControls } from '@tresjs/cientos';
 import { reducedMotion } from '../anim';
 import { selection } from '../selection';
-import { boundsOf } from './geometry';
+import { WALL_H, boundsOf } from './geometry';
 import { createCameraRig, type CameraRig } from './camera';
 import { PRESETS, presetRequest } from './presets';
 import { createInteraction, type Interaction } from './interact';
@@ -17,25 +17,61 @@ import { createElectrical } from './electrical';
 import { createRoof } from './roof';
 import { createLabels } from './labels';
 import { createPower } from './flow/power';
+import { createExhaust } from './flow/exhaust';
+import { createDisplays } from './displays';
+import { createEnvironment, createMaterials, clock } from './materials';
 import { createAirflow } from './flow/airflow';
 import { createShimmer } from './flow/shimmer';
 import { hallPerf } from './perfStats';
 import { disposeTree } from './util';
 
-const { renderer, camera } = useTres();
+const { renderer, camera, scene } = useTres();
 const gl = renderer as THREE.WebGLRenderer;
+const threeScene = ((scene as unknown as { value?: THREE.Scene }).value ?? scene) as THREE.Scene;
 
-const room = createRoom();
-const racks = createRacks();
-const crahs = createCrahs();
-const electrical = createElectrical();
-const roof = createRoof();
+// Lighting: image-based light from a procedural room, one shadowed key light (static casters, so the shadow map is
+// rendered a few times at start and then left alone), a soft ceiling spot over the electrical room and a light fog.
+gl.shadowMap.enabled = true;
+gl.shadowMap.type = THREE.PCFShadowMap;
+gl.shadowMap.autoUpdate = false;
+const env = createEnvironment(gl);
+threeScene.environment = env;
+threeScene.environmentIntensity = 0.5;
+threeScene.fog = new THREE.FogExp2('#05080d', 0.011);
+const key = new THREE.DirectionalLight('#fff2e0', 1.6);
+key.position.set(-3, 24, 20);
+key.target.position.set(4, 0, 8);
+key.castShadow = true;
+key.shadow.mapSize.set(2048, 2048);
+Object.assign(key.shadow.camera, { left: -17, right: 17, top: 17, bottom: -17, near: 5, far: 60 });
+key.shadow.bias = -0.0004;
+key.shadow.normalBias = 0.03;
+const rim = new THREE.DirectionalLight('#6aa8ff', 0.5);
+rim.position.set(16, 9, -8);
+const spot = new THREE.SpotLight('#ffe9c8', 60, 22, 1.0, 0.7, 1.5);
+spot.position.set(-3.8, 3.3, 8.2);
+spot.target.position.set(-3.8, 0, 8.2);
+const lights = new THREE.Group();
+lights.add(key, key.target, rim, spot, spot.target);
+
+const mats = createMaterials();
+const room = createRoom(mats);
+const racks = createRacks(mats);
+const crahs = createCrahs(mats);
+const electrical = createElectrical(mats);
+const roof = createRoof(mats);
+const displays = createDisplays(mats);
+const exhaust = createExhaust(electrical.stackTop);
 const labels = createLabels();
-const power = createPower();
+const power = createPower(mats);
 const airflow = createAirflow();
 const shimmer = createShimmer();
 const highlight = createHighlight();
-const objects: THREE.Object3D[] = [room, racks.group, crahs.group, electrical.group, roof.group, labels, power.group, shimmer.group, airflow.points, highlight.group];
+const objects: THREE.Object3D[] = [room, racks.group, crahs.group, electrical.group, roof.group, displays.group, labels, power.group, exhaust.group, shimmer.group, airflow.points, highlight.group, lights];
+[room, racks.group, crahs.group, electrical.group, roof.group, power.group].forEach((g) => g.traverse((o) => ((o as THREE.Mesh).isMesh ? ((o as THREE.Mesh).receiveShadow = true) : undefined)));
+let shadowFrames = 0;
+const ceiling = room.userData.ceiling as THREE.Object3D | undefined;
+const ductMat = room.userData.ductMat as THREE.MeshStandardMaterial;
 hallPerf.particles = 0;
 
 // Reduced motion: no particles, no spin, static camera (the rest of the scene still follows live data).
@@ -69,6 +105,8 @@ function setup(): void {
     },
   );
   window.addEventListener('keydown', onKey);
+  // Dev only (stripped from builds): scripted camera placement for screenshots.
+  if (import.meta.env.DEV) (window as unknown as { __hallLook: unknown }).__hallLook = (p: number[], t: number[]) => ctrl.setLookAt(p[0], p[1], p[2], t[0], t[1], t[2], false);
 }
 
 function onKey(e: KeyboardEvent): void {
@@ -86,7 +124,22 @@ onBeforeRender(({ delta, elapsed }) => {
   const dt = Math.min(delta, 0.1);
   const animate = !reducedMotion.value;
   gl.getDrawingBufferSize(size);
+  clock.value = animate ? elapsed : 0;
+  const above = (camera.value?.position.y ?? 0) >= WALL_H + 0.2;
+  if (ceiling) ceiling.visible = !above;
+  if (ductMat.transparent !== above) {
+    ductMat.transparent = above;
+    ductMat.opacity = above ? 0.1 : 1;
+    ductMat.depthWrite = !above;
+    ductMat.needsUpdate = true;
+  }
+  if (shadowFrames < 3) {
+    gl.shadowMap.needsUpdate = true;
+    shadowFrames++;
+  }
   racks.update();
+  displays.update(performance.now());
+  exhaust.update(elapsed, animate, size.y);
   crahs.update(dt, animate);
   electrical.update(dt, elapsed, animate);
   roof.update(dt, animate);
@@ -109,6 +162,7 @@ onBeforeUnmount(() => {
   interaction?.dispose();
   rig?.dispose();
   objects.forEach(disposeTree);
+  env.dispose();
   hallPerf.ready = false;
 });
 
@@ -118,8 +172,6 @@ onBeforeUnmount(() => {
 <template>
   <TresPerspectiveCamera :position="PRESETS[0].pos" :fov="42" :near="0.1" :far="220" />
   <CameraControls ref="controlsRef" make-default :min-distance="0.4" :max-distance="60" :max-polar-angle="1.62" :smooth-time="0.9" :dragging-smooth-time="0.12" />
-  <TresHemisphereLight :args="['#9fb8d8', '#0b1018', 1.7]" />
-  <TresDirectionalLight :position="[-8, 18, 10]" :intensity="1.7" />
-  <TresDirectionalLight :position="[14, 8, -6]" :intensity="0.35" color="#6aa8ff" />
+  <TresHemisphereLight :args="['#9fb8d8', '#0b1018', 0.45]" />
   <primitive v-for="o in objects" :key="o.uuid" :object="o" />
 </template>

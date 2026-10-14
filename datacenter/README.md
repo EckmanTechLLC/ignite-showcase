@@ -30,6 +30,21 @@ Headless Chrome, 1920x1080, live data (these show the SVG hall of tasks 56-59; r
 
 `?perf` readout: fps, frame time p50/p95/max, draw calls, triangles and live particle count, DOM nodes, SSE batches/s. Measurements: [`docs/perf.md`](../docs/perf.md).
 
+The hall is detailed procedural equipment (task-84), kept to about 100 draw calls and 300-350 k triangles at rest: static equipment is merged per material (`hall3d/gfx.ts` `Batch`), racks, server units, LEDs, fans and breakers are instanced, and the status displays are one canvas atlas. Lighting is image-based (three's `RoomEnvironment`), one shadowed key light whose shadow map is rendered only at start (the casters are static), a light fog and ACES tone mapping. The ceiling grid hides and the return ducts turn see-through when the camera is above the cut-away. Reduced motion keeps all geometry and drops particles, fan spin, LED blinking and conductor pulses.
+
+| Equipment | What it shows |
+|---|---|
+| Rack (60) | 42U cabinet, perforated front door (glows with inlet temperature), rear door with fan grills (glows with outlet temperature), 1U/2U/4U servers filled by kW, status and data LEDs (blink rate by kW), switch with port LEDs, side cable bundles, nameplate, inlet strip, kW bar, offline "zz" with red LED |
+| Cold-aisle containment | Framed glass roof with strip lights, sliding glass end doors with handles, perforated floor tiles over a pedestal grid, hazard stripes |
+| CRAH (4) | Cabinet, supply plenum, louvred filters, fan wheel behind a guard (spins at fan %), live display, status band and beacon, chilled-water stubs with valves, return duct from the ceiling |
+| Chiller (2) | Screw chiller with motor, compressor, evaporator barrel, coil banks, four-fan condenser bank behind guards, control cabinet with display, insulated piping |
+| UPS A/B | Rectifier, battery cabinet with cells behind glass (lit by state of charge), bypass breakers, display |
+| PDU (6) | Breaker panel with toggles (down and red when tripped), load bar, display |
+| ATS | Window onto two contactors and copper bus, transfer lever and position lamps, display |
+| Generator | Engine with valve covers, alternator, radiator with spinning fan, muffler and stack (exhaust smoke and heat shimmer while running), fuel tank with level gauge, control panel |
+| Utility entry | Switchgear with ceramic bushings, meter dial, conduits |
+| Power and water | Busway ducts with flanged joints, hangers and tap-off boxes (a recessed light line pulses on the live path); insulated pipes with flanges, supports, valves and moving flow bands |
+
 ## Tiers
 
 Role-generic names (ADR-005 section 7), derived from `/auth/session` `permissions`: Anonymous / Viewer (read) -> Operator

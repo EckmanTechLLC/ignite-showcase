@@ -9,7 +9,8 @@ const emit = defineEmits<{ error: [message: string] }>();
 <template>
   <TresCanvas
     clear-color="#05080d"
-    :tone-mapping="THREE.NoToneMapping"
+    :tone-mapping="THREE.ACESFilmicToneMapping"
+    :tone-mapping-exposure="1.05"
     :antialias="true"
     :dpr="[1, 1.5]"
     power-preference="high-performance"

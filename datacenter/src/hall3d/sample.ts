@@ -22,6 +22,11 @@ export const S = {
   /** Fan % per CRAH 1..4 (0 when not running). */
   fan: new Float32Array(4),
   crahState: ['', '', '', ''] as string[],
+  crahSupply: new Float32Array(4).fill(Number.NaN),
+  crahReturn: new Float32Array(4).fill(Number.NaN),
+  utilV: Number.NaN,
+  utilHz: Number.NaN,
+  genFuel: Number.NaN,
   chillerState: ['', ''] as string[],
   chillerKW: new Float32Array(2),
   chillerSupplyC: Number.NaN,
@@ -63,6 +68,8 @@ export function refresh(): void {
     S.crahState[n - 1] = st;
     const f = num(`Cooling/CRAH/${n}/FanPct`);
     S.fan[n - 1] = (st === 'RUN' || st === 'RUNNING') && Number.isFinite(f) ? f : 0;
+    S.crahSupply[n - 1] = num(`Cooling/CRAH/${n}/SupplyC`);
+    S.crahReturn[n - 1] = num(`Cooling/CRAH/${n}/ReturnC`);
   }
   for (let n = 1; n <= 2; n++) {
     S.chillerState[n - 1] = str(`Cooling/Chiller/${n}/State`);
@@ -74,6 +81,9 @@ export function refresh(): void {
   S.chillerSupplyC = sup.length ? sup.reduce((a, b) => a + b, 0) / sup.length : Number.NaN;
   S.chillerReturnC = ret.length ? ret.reduce((a, b) => a + b, 0) / ret.length : Number.NaN;
   S.flowLps = num('Cooling/Loop/FlowLps');
+  S.utilV = num('Power/Utility/VoltageV');
+  S.utilHz = num('Power/Utility/FrequencyHz');
+  S.genFuel = num('Power/Generator/FuelPct');
 }
 
 /** Power-path state for the conductors, from the shared derived state (power/state.ts). */

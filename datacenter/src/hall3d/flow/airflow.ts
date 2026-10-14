@@ -95,7 +95,9 @@ void main() {
 
   vec4 mv = modelViewMatrix * vec4(pos, 1.0);
   gl_Position = projectionMatrix * mv;
-  gl_PointSize = clamp(uSize * projectionMatrix[1][1] * uViewH * 0.5 / -mv.z, 1.5, 12.0);
+  // size follows the flow speed of the zone (a starved zone shows small, slow motes) and the stage (under the floor smaller)
+  float spd = 0.7 + 0.8 * clamp(rate, 0.0, 1.0);
+  gl_PointSize = clamp(uSize * spd * (pos.y < 0.0 ? 0.8 : 1.0) * projectionMatrix[1][1] * uViewH * 0.5 / -mv.z, 1.5, 14.0);
 }`;
 
 const FRAG = /* glsl */ `
@@ -103,7 +105,7 @@ varying vec3 vCol;
 varying float vAlpha;
 void main() {
   vec2 c = gl_PointCoord - 0.5;
-  float a = smoothstep(0.5, 0.05, length(c));
+  float a = exp(-dot(c, c) * 16.0);
   if (a * vAlpha < 0.01) discard;
   gl_FragColor = vec4(vCol, a * vAlpha);
   #include <colorspace_fragment>

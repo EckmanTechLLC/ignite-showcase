@@ -50,7 +50,7 @@ Runtime libraries bundled into `microgrid/dist` (npm, no CDN); Pixi is one lazy 
 
 ## Data Center demo (`datacenter/`)
 
-The 3D hall is procedural: every rack, CRAH, cabinet, pipe, busway, the floor tile pattern, the row/equipment labels and the "zz" offline mark are generated in code (geometry, a canvas-painted tile and label atlas, and shaders). No model, image or HDR file is bundled beyond the shared theme fonts.
+The 3D hall is procedural: every rack (frame, perforated doors, server fronts, switch), CRAH, UPS, PDU, ATS, switchgear, generator, chiller, pipe, busway and duct, the floor and perforated tiles, wall panels, hazard stripes, louvres, nameplates, status displays, exit signs and the "zz" offline mark are generated in code (merged primitive geometry, canvas-painted textures and atlases, and shader patches). Lighting uses three's built-in `RoomEnvironment` (a procedural room, prefiltered at start-up), not an HDR file. No model, image or HDR file is bundled beyond the shared theme fonts.
 
 Runtime libraries bundled into `datacenter/dist` (npm, no CDN); the three.js/TresJS code is one lazy chunk loaded after the first paint:
 
