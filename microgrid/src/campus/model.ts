@@ -1,6 +1,14 @@
 /** Geometry (world units, ~1 unit = 25 cm) and shared constants of the campus map. North is up, east is right. */
 export const WORLD = { x: 0, y: 0, w: 1610, h: 900 };
 
+/** Oblique 2.5D view: the ground plane is foreshortened by cos(30 deg) and height lifts a point straight up the screen. Every drawing, shadow, flow and hit area goes through `project`. */
+export const COS = Math.cos(Math.PI / 6);
+export const project = (x: number, y: number, z = 0): { x: number; y: number } => ({ x, y: y * COS - z });
+/** Screen box of a ground rectangle extruded to height `h`. */
+export const projBox = (r: { x: number; y: number; w: number; h: number }, h = 0): { x: number; y: number; w: number; h: number } => ({ x: r.x, y: r.y * COS - h, w: r.w, h: r.h * COS + h });
+/** What the camera frames (projected world, with headroom for tall objects). */
+export const VIEW = { x: 0, y: -10, w: WORLD.w, h: WORLD.h * COS + 20 };
+
 export const PV_ARRAYS = ['A1', 'A2', 'A3', 'A4'] as const;
 export const BESS_IDS = ['B1', 'B2'] as const;
 export const BLDG_IDS = ['1', '2', '3'] as const;
@@ -33,7 +41,43 @@ export const BLDG = [
   { id: '2', x: 340, y: 410, w: 200, h: 110 },
   { id: '3', x: 590, y: 410, w: 190, h: 110 },
 ] as const;
-export const BLDG_FACADE = 26;
+export const BLDG_FACADE = 26; // lawn margin kept free of trees south of a building
+export const BLDG_FLOORS = [4, 2, 3] as const;
+export const FLOOR_H = [12, 14, 12] as const;
+/** Wall height (floors x floor height) and the highest point (ridge) per building. */
+export const BLDG_WALL = [48, 28, 36] as const;
+export const BLDG_TOP = [48, 28, 50] as const;
+
+export interface Win {
+  x0: number;
+  x1: number;
+  z0: number;
+  z1: number;
+  floor: number;
+}
+
+export const COLS = [12, 8, 6] as const;
+
+/** Window cells of a facade, floor 0 first (also the lit-window overlay of the night pass). */
+export function windowCells(i: number): Win[] {
+  const b = BLDG[i];
+  const out: Win[] = [];
+  const pitch = (b.w - 16) / COLS[i];
+  for (let f = 0; f < BLDG_FLOORS[i]; f++) {
+    for (let c = 0; c < COLS[i]; c++) {
+      if (i === 0 && f === 0 && (c === 5 || c === 6)) continue; // entrance
+      if (i === 1 && f === 0 && c >= 5) continue; // dock + door
+      if (i === 2 && f === 0 && (c === 2 || c === 3)) continue; // front door + porch
+      const x0 = b.x + 8 + c * pitch + (i === 0 ? 0.8 : 3);
+      const x1 = b.x + 8 + (c + 1) * pitch - (i === 0 ? 0.8 : 3);
+      const z0 = f * FLOOR_H[i] + (i === 0 ? 2.2 : i === 1 ? 7 : 4);
+      const z1 = (f + 1) * FLOOR_H[i] - (i === 0 ? 1.6 : i === 1 ? 4 : 3);
+      out.push({ x0, x1, z0, z1, floor: f });
+    }
+  }
+  return out;
+}
+
 
 export const BESS = [
   { id: 'B1', x: 920, y: 400, w: 160, h: 54 },
@@ -54,7 +98,7 @@ export const bayRect = (i: number): Rect => {
 };
 
 /** Heights (world units) used for the shadow projection. */
-export const H = { pv: 9, bldg: 46, tree: 30, bess: 15, genset: 20, sub: 26, car: 8, pole: 24 } as const;
+export const H = { pv: 11, bldg: 46, tree: 30, bess: 26, genset: 28, sub: 24, car: 8, pole: 24 } as const;
 
 export const COLOR = {
   pv: 0xfacc15,
@@ -105,7 +149,22 @@ export interface Tree {
   y: number;
   r: number;
   tone: number;
+  /** 0 round-crowned, 1 conifer, 2 birch-like; size class 0..2 follows `r`. */
+  kind: number;
 }
+
+/** Radius of the reference canopy per size class (world units). */
+export const TREE_R = [10, 13.5, 17] as const;
+export const treeClass = (r: number): number => (r < 11.7 ? 0 : r < 15.2 ? 1 : 2);
+
+export const POND = { x: 1130, y: 740, rx: 120, ry: 62 };
+/** Footpaths: building entrances to the south road, and the lawn walk along the building fronts. */
+export const PATHS: Rect[] = [
+  { x: 82, y: 528, w: 706, h: 10 },
+  { x: 183, y: 520, w: 14, h: 40 },
+  { x: 433, y: 520, w: 14, h: 40 },
+  { x: 678, y: 520, w: 14, h: 40 },
+];
 
 /** Deterministic tree scatter on the free lawn (seeded, so every load looks the same). */
 export function makeTrees(): Tree[] {
@@ -118,6 +177,8 @@ export function makeTrees(): Tree[] {
     { x: EV_LOT.x - 24, y: EV_LOT.y - 24, w: EV_LOT.w + 48, h: EV_LOT.h + 48 },
     ...ROADS.map((r) => ({ x: r.x - 18, y: r.y - 18, w: r.w + 36, h: r.h + 36 })),
     { x: 580, y: 700, w: 270, h: 40 }, // EV feeder run
+    { x: POND.x - POND.rx - 30, y: POND.y - POND.ry - 30, w: POND.rx * 2 + 60, h: POND.ry * 2 + 60 },
+    { x: 80, y: 524, w: 710, h: 24 }, // walk
   ];
   let seed = 20261014;
   const rnd = () => {
@@ -132,7 +193,7 @@ export function makeTrees(): Tree[] {
     const y = 12 + rnd() * (WORLD.h - 24);
     if (solid.some((s) => x > s.x - r && x < s.x + s.w + r && y > s.y - r && y < s.y + s.h + r)) continue;
     if (out.some((t) => Math.hypot(t.x - x, t.y - y) < t.r + r + 4)) continue;
-    out.push({ x, y, r, tone: Math.floor(rnd() * 3) });
+    out.push({ x, y, r, tone: Math.floor(rnd() * 3), kind: Math.floor(rnd() * 3) });
   }
   return out;
 }

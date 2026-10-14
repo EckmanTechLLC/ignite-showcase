@@ -1,12 +1,12 @@
 import { Application, Container, Graphics, Rectangle, Sprite, Text, Texture, type FederatedPointerEvent } from 'pixi.js';
-import { BESS, BESS_IDS, BLDG, BLDG_FACADE, BLDG_IDS, CHARGERS, COLOR, EV_LOT, GENSET, LEADS, PV_ARRAYS, SUBSTATION, WORLD, bayRect, makeTrees, pvFieldRect, type Rect } from './model';
-import { BessUnit, BuildingActor, EvLot, GensetUnit, PvField, StreetLights, Substation } from './actors';
-import { buildCanopies, buildGround, buildProps } from './art';
+import { BESS, BESS_IDS, BLDG, BLDG_IDS, BLDG_TOP, CHARGERS, COLOR, COS, EV_LOT, GENSET, LEADS, PV_ARRAYS, SUBSTATION, TREE_R, VIEW, WORLD, bayRect, makeTrees, treeClass, project, projBox, pvFieldRect, type Rect } from './model';
+import { BessUnit, BuildingActor, EvLot, GensetUnit, PvField, StreetLights, Substation, type Ctx } from './actors';
+import { buildGround, treeTexture } from './art';
 import { makeCloudFilter } from './cloud';
 import { Flows } from './flows';
 import { sample } from './read';
 import { clamp, gradeOf, packRgb, shadowPoly, sunOf, type Caster } from './sky';
-import { makeTextures } from './textures';
+import { makeTextures, plateTex } from './textures';
 import type { Target } from '../selection.svelte';
 
 /** What the scene needs from the page. */
@@ -79,19 +79,73 @@ export async function createScene(host: HTMLElement, hooks: SceneHooks): Promise
   const camFx = new Container();
   const camUi = new Container();
   const lawn = new Graphics().rect(-3000, -3000, 7600, 6900).fill(0x1c3a25);
-  const ground = buildGround();
+  const ground = buildGround(tex);
   const flows = new Flows(tex.dot);
   const shadowG = new Graphics();
-  const props = buildProps();
-  const dyn = new Container();
-  const pvLayer = new Container();
-  const trees = makeTrees();
-  const canopies = buildCanopies(trees);
-  cam.addChild(lawn, ground, shadowG, pvLayer, props, dyn, canopies);
+  const world = new Container(); // everything standing on the ground, depth-sorted by its south edge
+  world.sortableChildren = true;
+  cam.addChild(lawn, ground, shadowG, world);
   camFx.addChild(flows.layer); // streams stay vivid under the night grade
+  // buried conductors disappear behind the tall assets standing over them (stencil mask, WebGL only)
+  if (hasFilters) {
+    const occ = new Graphics();
+    for (const [i, b] of BLDG.entries()) {
+      const r = projBox(b, BLDG_TOP[i] + 3);
+      occ.rect(r.x, r.y, r.w, r.h);
+    }
+    for (const b of BESS) {
+      const r = projBox(b, 30);
+      occ.rect(r.x, r.y, r.w, r.h);
+    }
+    const g = projBox(GENSET, 34);
+    occ.rect(g.x, g.y, g.w, g.h).fill(0xffffff);
+    occ.alpha = 0.002; // a stencil mask ignores colour and alpha; it only has to stay in the scene graph so the camera moves it
+    camFx.addChild(occ);
+    flows.layer.setMask({ mask: occ, inverse: true });
+  }
   ground.cacheAsTexture({ resolution: cacheRes, antialias: true });
-  props.cacheAsTexture({ resolution: cacheRes, antialias: true });
-  canopies.cacheAsTexture({ resolution: cacheRes, antialias: true });
+  const stat = <T extends Container>(c: T): T => {
+    c.cacheAsTexture({ resolution: cacheRes, antialias: true });
+    return c;
+  };
+  const plates = new Map<string, Texture>();
+  const ctx: Ctx = {
+    tex,
+    res: textRes,
+    world,
+    fx: camFx,
+    ui: camUi,
+    stat,
+    plate: (lines, accent, w = 96) => {
+      const k = `${lines.join('|')}|${accent}|${w}`;
+      let t = plates.get(k);
+      if (!t) {
+        t = plateTex(lines, accent, w, textRes);
+        plates.set(k, t);
+      }
+      return t;
+    },
+  };
+  const trees = makeTrees();
+  const treeTex = new Map<string, ReturnType<typeof treeTexture>>();
+  const TONES = [0xffffff, 0xe3f1dc, 0xf1ecd6];
+  for (const t of trees) {
+    const cls = treeClass(t.r);
+    const k = `${t.kind}-${cls}`;
+    let tt = treeTex.get(k);
+    if (!tt) {
+      tt = treeTexture(app.renderer, t.kind, cls);
+      treeTex.set(k, tt);
+    }
+    const sp = new Sprite(tt.tex);
+    sp.anchor.set(tt.ax, tt.ay);
+    const p = project(t.x, t.y);
+    sp.position.set(p.x, p.y);
+    sp.scale.set(t.r / TREE_R[cls]);
+    sp.tint = TONES[t.tone];
+    sp.zIndex = t.y;
+    world.addChild(sp);
+  }
 
   const grade = new Graphics().rect(0, 0, 10, 10).fill(0xffffff);
   grade.blendMode = 'multiply';
@@ -105,20 +159,20 @@ export async function createScene(host: HTMLElement, hooks: SceneHooks): Promise
   app.stage.addChild(cam, grade, camFx, cloudSprite, dipG, camUi);
 
   // --- actors
-  const pv = PV_ARRAYS.map((_, i) => new PvField(i, tex, textRes, pvLayer, camUi));
-  const bess = BESS_IDS.map((_, i) => new BessUnit(i, tex, textRes, dyn, camFx, camUi));
-  const gen = new GensetUnit(tex, textRes, dyn, camFx, camUi);
-  const ev = new EvLot(dyn, camUi, textRes);
-  const blds = BLDG_IDS.map((_, i) => new BuildingActor(i, textRes, dyn, camFx, camUi));
-  const sub = new Substation(tex, textRes, dyn, camFx, camUi);
-  const lights = new StreetLights(tex, camFx);
+  const pv = PV_ARRAYS.map((_, i) => new PvField(i, ctx));
+  const bess = BESS_IDS.map((_, i) => new BessUnit(i, ctx));
+  const gen = new GensetUnit(ctx);
+  const ev = new EvLot(ctx);
+  const blds = BLDG_IDS.map((_, i) => new BuildingActor(i, ctx));
+  const sub = new Substation(ctx);
+  const lights = new StreetLights(ctx, app.renderer);
   const staticCasters: Caster[] = [
     ...pv.flatMap((a) => a.casters()),
     ...bess.flatMap((a) => a.casters()),
     ...gen.casters(),
     ...blds.flatMap((a) => a.casters()),
     ...sub.casters(),
-    ...trees.map((t): Caster => ({ kind: 'disc', x: t.x, y: t.y, r: t.r, h: 24 })),
+    ...trees.map((t): Caster => ({ kind: 'disc', x: t.x, y: t.y, r: t.r, h: t.r * 1.5 + 8 })),
   ];
 
   // --- hover kW tag (numbers on hover only)
@@ -128,14 +182,15 @@ export async function createScene(host: HTMLElement, hooks: SceneHooks): Promise
   const halo = new Graphics();
 
   // --- entities (hit areas)
+  const evb = projBox({ x: EV_LOT.x - 8, y: EV_LOT.y - 8, w: EV_LOT.w + 16, h: EV_LOT.h + 16 }, 30);
   const entities: Entity[] = [
-    { target: { kind: 'evbank', id: '' }, bounds: { x: EV_LOT.x - 8, y: EV_LOT.y - 8, w: EV_LOT.w + 16, h: EV_LOT.h + 16 }, lead: 'EV' },
-    ...PV_ARRAYS.map((id, i): Entity => ({ target: { kind: 'pv', id }, bounds: pvFieldRect(i), lead: id })),
-    ...BESS.map((b): Entity => ({ target: { kind: 'bess', id: b.id }, bounds: b, lead: b.id })),
-    { target: { kind: 'genset', id: '' }, bounds: GENSET, lead: 'GEN' },
-    ...BLDG.map((b): Entity => ({ target: { kind: 'bldg', id: b.id }, bounds: { x: b.x, y: b.y, w: b.w, h: b.h + BLDG_FACADE }, lead: `L${b.id}` })),
-    { target: { kind: 'grid', id: '' }, bounds: { x: SUBSTATION.x, y: SUBSTATION.y, w: SUBSTATION.w + 60, h: SUBSTATION.h }, lead: 'LINK' },
-    ...CHARGERS.map((id, i): Entity => ({ target: { kind: 'charger', id }, bounds: bayRect(i), lead: 'EV' })),
+    { target: { kind: 'evbank', id: '' }, bounds: evb, lead: 'EV' },
+    ...PV_ARRAYS.map((id, i): Entity => ({ target: { kind: 'pv', id }, bounds: projBox(pvFieldRect(i), 14), lead: id })),
+    ...BESS.map((b): Entity => ({ target: { kind: 'bess', id: b.id }, bounds: projBox(b, 30), lead: b.id })),
+    { target: { kind: 'genset', id: '' }, bounds: projBox(GENSET, 34), lead: 'GEN' },
+    ...BLDG.map((b, i): Entity => ({ target: { kind: 'bldg', id: b.id }, bounds: projBox(b, BLDG_TOP[i] + 3), lead: `L${b.id}` })),
+    { target: { kind: 'grid', id: '' }, bounds: projBox({ x: SUBSTATION.x, y: SUBSTATION.y, w: SUBSTATION.w + 60, h: SUBSTATION.h }, 30), lead: 'LINK' },
+    ...CHARGERS.map((id, i): Entity => ({ target: { kind: 'charger', id }, bounds: projBox(bayRect(i), 12), lead: 'EV' })),
   ];
   camUi.addChild(halo);
   let dragMoved = false;
@@ -183,15 +238,15 @@ export async function createScene(host: HTMLElement, hooks: SceneHooks): Promise
     const ins = hooks.insets();
     const aw = Math.max(200, w - ins.left - ins.right);
     const ah = Math.max(200, h - ins.top - ins.bottom);
-    const fit = Math.min(aw / WORLD.w, ah / WORLD.h) * 0.98;
+    const fit = Math.min(aw / VIEW.w, ah / VIEW.h) * 0.98;
     const idle = !hooks.reduced() && t - camState.lastInput > 8;
     const ease = idle ? Math.min(1, (t - camState.lastInput - 8) / 4) : 0;
     const dx = Math.sin(t * 0.09) * 8 * ease;
     const dy = Math.cos(t * 0.07) * 5 * ease;
     const dz = 1 + Math.sin(t * 0.05) * 0.01 * ease;
     const s = fit * camState.zoom * dz;
-    const ox = ins.left + aw / 2 - (WORLD.x + WORLD.w / 2) * s + camState.panX + dx;
-    const oy = ins.top + ah / 2 - (WORLD.y + WORLD.h / 2) * s + camState.panY + dy;
+    const ox = ins.left + aw / 2 - (VIEW.x + VIEW.w / 2) * s + camState.panX + dx;
+    const oy = ins.top + ah / 2 - (VIEW.y + VIEW.h / 2) * s + camState.panY + dy;
     for (const c of [cam, camFx, camUi]) {
       c.scale.set(s);
       c.position.set(ox, oy);
@@ -243,8 +298,9 @@ export async function createScene(host: HTMLElement, hooks: SceneHooks): Promise
     const wy = (my - cam.y) / s1;
     const z = Math.min(4, Math.max(0.6, camState.zoom * Math.exp(-e.deltaY * 0.0016)));
     const s2 = (s1 / camState.zoom) * z;
-    camState.panX += mx - wx * s2 - cam.x;
-    camState.panY += my - wy * s2 - cam.y;
+    // the fitted origin moves with the scale (it centres the view), so the pan has to absorb that too
+    camState.panX += mx - wx * s2 - cam.x + (VIEW.x + VIEW.w / 2) * (s2 - s1);
+    camState.panY += my - wy * s2 - cam.y + (VIEW.y + VIEW.h / 2) * (s2 - s1);
     camState.zoom = z;
     camState.lastInput = performance.now() / 1000;
   };
@@ -337,17 +393,21 @@ export async function createScene(host: HTMLElement, hooks: SceneHooks): Promise
       shadowG.clear();
       if (sun.elev > 0.5) {
         const all = [...staticCasters, ...ev.casters()];
-        for (const c of all) shadowG.poly(shadowPoly(c, sun)).fill(0x03060b);
+        for (const c of all) {
+          const pts = shadowPoly(c, sun);
+          for (let i = 1; i < pts.length; i += 2) pts[i] *= COS; // ground plane -> screen
+          shadowG.poly(pts).fill(0x03060b);
+        }
       }
     }
     shadowG.alpha = sun.alpha;
 
     // actors
-    pv.forEach((a) => a.update(s, clock));
-    bess.forEach((a) => a.update(s, clock, reduced));
-    gen.update(s, clock, reduced);
+    pv.forEach((a) => a.update(s, clock, dt, sun));
+    bess.forEach((a) => a.update(s, clock, dt, reduced));
+    gen.update(s, clock, dt, reduced);
     ev.update(s, clock, dt, reduced);
-    blds.forEach((a) => a.update(s, sun.night));
+    blds.forEach((a) => a.update(s, sun.night, dt, reduced));
     sub.update(s, dt, reduced);
     lights.update(sun.night);
     dipG.alpha = sub.dipLevel * 0.55;
@@ -371,7 +431,8 @@ export async function createScene(host: HTMLElement, hooks: SceneHooks): Promise
       const kw = flows.kw(hoverEnt.lead);
       const mid = lead ? lead[Math.floor((lead.length - 1) / 2)] : { x: SUBSTATION.x + SUBSTATION.w + 40, y: SUBSTATION.y + 55 };
       const nxt = lead ? lead[Math.floor((lead.length - 1) / 2) + 1] : mid;
-      kwTag.position.set((mid.x + nxt.x) / 2 + (lead ? 26 : 0), (mid.y + nxt.y) / 2);
+      const kp = project((mid.x + nxt.x) / 2, (mid.y + nxt.y) / 2);
+      kwTag.position.set(kp.x + (lead ? 26 : 0), kp.y);
       kwTag.text = `${Math.abs(kw).toFixed(0)} kW`;
       kwTag.visible = true;
     } else kwTag.visible = false;

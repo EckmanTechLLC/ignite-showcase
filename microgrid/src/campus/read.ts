@@ -14,10 +14,10 @@ export interface Snap {
   exportKw: number;
   pv: { ac: number; irr: number; rated: number; curtailed: boolean; inv: [string, string]; dc: number[]; health: number[] }[];
   bess: { kw: number; soc: number; state: string; rated: number }[];
-  gen: { state: string; kw: number; countdown: number };
+  gen: { state: string; kw: number; countdown: number; fuel: number };
   ev: { state: string; kw: number; soc: number; target: number }[];
   evTotal: number;
-  bldg: { kw: number; shed: boolean; crit: boolean }[];
+  bldg: { kw: number; hvac: number; shed: boolean; crit: boolean }[];
   mode: string;
 }
 
@@ -44,10 +44,10 @@ export function sample(): Snap {
       health: S.map((s) => tagNum(`PV/${id}/String/S${s}/Health`)),
     })),
     bess: BESS_IDS.map((id) => ({ kw: tagNum(`BESS/${id}/kW`), soc: tagNum(`BESS/${id}/SOCPct`), state: tagStr(`BESS/${id}/State`), rated: tagNum(`BESS/${id}/RatedkW`) || 250 })),
-    gen: { state: tagStr('Genset/State'), kw: tagNum('Genset/kW'), countdown: tagNum('Genset/StartCountdownS') },
+    gen: { state: tagStr('Genset/State'), kw: tagNum('Genset/kW'), countdown: tagNum('Genset/StartCountdownS'), fuel: tagNum('Genset/FuelPct') },
     ev: CHARGERS.map((id) => ({ state: tagStr(`EV/${id}/State`), kw: tagNum(`EV/${id}/kW`), soc: tagNum(`EV/${id}/CarSOCPct`), target: tagNum(`EV/${id}/TargetSOCPct`) })),
     evTotal: tagNum('EV/TotalkW'),
-    bldg: BLDG_IDS.map((id) => ({ kw: tagNum(`Loads/Bldg${id}/kW`), shed: tagBool(`Loads/Bldg${id}/Shed`), crit: tagBool(`Loads/Bldg${id}/Critical`) })),
+    bldg: BLDG_IDS.map((id) => ({ kw: tagNum(`Loads/Bldg${id}/kW`), hvac: tagNum(`Loads/Bldg${id}/HVACkW`), shed: tagBool(`Loads/Bldg${id}/Shed`), crit: tagBool(`Loads/Bldg${id}/Critical`) })),
     mode: tagStr('KPI/Mode'),
   };
 }

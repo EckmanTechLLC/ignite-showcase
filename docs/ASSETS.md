@@ -38,7 +38,7 @@ Build-time only: `vite-plugin-solid` 2.11.14 (MIT).
 
 ## Campus Microgrid demo (`microgrid/`)
 
-The whole campus is drawn by the PixiJS scene from code: PV rows, containers, genset, EV lot and cars, buildings, substation, roads, trees, shadow polygons and the cloud-shadow shader (GLSL in `src/campus/cloud.ts`). The four small textures (energy dot, glow, exhaust puff, one PV-module row) are painted once on a 2D canvas at start-up. No model, image or font file is bundled beyond the shared theme fonts above.
+The whole campus is drawn by the PixiJS scene from code in an oblique 2.5D projection (one `project()` for art, shadows, flows and hit areas): building facades, roofs and roof plant, tilted PV racking with inverter cabinets and combiner boxes, BESS containers, genset enclosure, EV canopy, pedestals and cars, the substation yard and pole line, roads, kerbs, paths, a pond, hedges, three tree kinds, street lamps, nameplates, shadow polygons and the cloud-shadow shader (GLSL in `src/campus/cloud.ts`). The small textures (energy dot, glow, exhaust puff, PV racking row, lawn / asphalt / gravel tiles, rotor, lamp cone, glint band, nameplates) are painted once on a 2D canvas at start-up; trees and lamps are rendered once from vector shapes. No model, image or font file is bundled beyond the shared theme fonts above.
 
 Runtime libraries bundled into `microgrid/dist` (npm, no CDN); Pixi is one lazy chunk loaded after the first paint:
 

@@ -1,5 +1,5 @@
 import { Container, Graphics, Particle, ParticleContainer, type Texture } from 'pixi.js';
-import { COLOR, LEADS, LINK, SUB_X, TAP_X, TRUNK_Y, type Pt } from './model';
+import { COLOR, COS, LEADS, LINK, SUB_X, TAP_X, TRUNK_Y, type Pt } from './model';
 import { spacingOf, speedOf, supplyGroup, trunkSegments, type Group, type Tap } from './network';
 import { finite, type Snap } from './read';
 
@@ -10,6 +10,8 @@ interface Path {
   pts: Pt[];
   cum: number[];
   len: number;
+  /** Lift above the ground (the utility link runs overhead). */
+  z: number;
   particles: Particle[];
   phase: number;
   /** Currently shown: signed kW (positive = along pts), colour, active particle count. */
@@ -60,7 +62,7 @@ export class Flows {
       particles.push(p);
       this.pc.addParticle(p);
     }
-    const path: Path = { id, pts, cum, len, particles, phase: Math.random(), kw: 0, color: 0xffffff, active: 0, level: 0 };
+    const path: Path = { id, pts, cum, len, z: id === 'LINK' ? 22 : 0, particles, phase: Math.random(), kw: 0, color: 0xffffff, active: 0, level: 0 };
     this.paths.set(id, path);
     return path;
   }
@@ -142,7 +144,7 @@ export class Flows {
         active++;
         const pos = along(p, ((p.phase + i / n) % 1) * p.len);
         q.x = pos.x;
-        q.y = pos.y;
+        q.y = pos.y * COS - p.z;
         q.tint = col;
         q.alpha = 0.35 + 0.65 * p.level;
       }
@@ -160,8 +162,8 @@ export class Flows {
     for (const p of this.paths.values()) {
       if (p.level <= 0.02) continue;
       const a = 0.12 + 0.2 * Math.min(1, p.level) * Math.min(1, Math.abs(p.kw) / 150 + 0.3);
-      g.moveTo(p.pts[0].x, p.pts[0].y);
-      for (let i = 1; i < p.pts.length; i++) g.lineTo(p.pts[i].x, p.pts[i].y);
+      g.moveTo(p.pts[0].x, p.pts[0].y * COS - p.z);
+      for (let i = 1; i < p.pts.length; i++) g.lineTo(p.pts[i].x, p.pts[i].y * COS - p.z);
       g.stroke({ width: 5, color: p.color, alpha: a, join: 'round', cap: 'round' });
     }
   }
