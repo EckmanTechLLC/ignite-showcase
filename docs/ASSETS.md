@@ -36,6 +36,18 @@ Runtime libraries bundled into `brewery/dist` (npm, no CDN):
 
 Build-time only: `vite-plugin-solid` 2.11.14 (MIT).
 
+## Campus Microgrid demo (`microgrid/`)
+
+The whole campus is drawn by the PixiJS scene from code: PV rows, containers, genset, EV lot and cars, buildings, substation, roads, trees, shadow polygons and the cloud-shadow shader (GLSL in `src/campus/cloud.ts`). The four small textures (energy dot, glow, exhaust puff, one PV-module row) are painted once on a 2D canvas at start-up. No model, image or font file is bundled beyond the shared theme fonts above.
+
+Runtime libraries bundled into `microgrid/dist` (npm, no CDN); Pixi is one lazy chunk loaded after the first paint:
+
+| Library | Version | Licence |
+|---|---|---|
+| svelte | 5.57.2 | MIT |
+| pixi.js | 8.22.0 (same as the brewery) | MIT |
+| echarts (lazy, Trends overlay) | 6.1.0 | Apache-2.0 |
+
 ## Data Center demo (`datacenter/`)
 
 The 3D hall is procedural: every rack, CRAH, cabinet, pipe, busway, the floor tile pattern, the row/equipment labels and the "zz" offline mark are generated in code (geometry, a canvas-painted tile and label atlas, and shaders). No model, image or HDR file is bundled beyond the shared theme fonts.

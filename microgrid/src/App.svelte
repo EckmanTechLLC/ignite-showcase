@@ -2,7 +2,9 @@
   import { onMount } from 'svelte';
   import Hud from './hud/Hud.svelte';
   import DayStrip from './strip/DayStrip.svelte';
-  import Diagram from './diagram/Diagram.svelte';
+  import KpiRail from './hud/KpiRail.svelte';
+  import Campus from './campus/Campus.svelte';
+  import { campus } from './campus/handle.svelte';
   import Tooltip from './Tooltip.svelte';
   import Help from './Help.svelte';
   import PerfReadout from './PerfReadout.svelte';
@@ -31,6 +33,7 @@
       const panel = KEYS[e.key.toLowerCase()];
       if (e.key === '?') ui.help = !ui.help;
       else if (panel) togglePanel(panel);
+      else if (e.key.toLowerCase() === 'r') campus.handle?.resetCamera();
       else if (e.key === 'Escape') {
         if (ui.help) ui.help = false;
         else if (sel.target) sel.target = null;
@@ -50,9 +53,10 @@
   });
 </script>
 
+<main class="stage"><h1 class="sr-only">Campus Microgrid</h1><Campus /></main>
 <Hud />
 <DayStrip />
-<main class="stage"><h1 class="sr-only">Campus Microgrid</h1><Diagram /></main>
+<KpiRail />
 <Tooltip />
 <Dock />
 {#if ui.panel === 'trends'}<Trends />{:else if ui.panel === 'alarms'}<AlarmBoard />{:else if ui.panel === 'controls'}<Controls />{:else if ui.panel === 'identity'}<Identity />{/if}

@@ -15,6 +15,7 @@
     "@ignite/client": "*",
     "@ignite/theme": "*",
     "echarts": "6.1.0",
+    "pixi.js": "8.22.0",
     "svelte": "5.57.2"
   },
   "devDependencies": {

@@ -120,7 +120,7 @@
 </section>
 
 <style>
-  .strip { position: fixed; left: 0; right: 0; top: var(--hud-h); height: var(--strip-h); z-index: 9; display: flex; align-items: stretch; gap: var(--space-4); padding: var(--space-2) var(--space-4); background: var(--bg-1); border-bottom: 1px solid var(--line); color: var(--fg-1); }
+  .strip { position: fixed; left: 0; right: 0; top: var(--hud-h); height: var(--strip-h); z-index: 9; display: flex; align-items: stretch; gap: var(--space-4); padding: var(--space-2) var(--space-4); padding-right: 64px; background: color-mix(in srgb, var(--bg-1) 62%, transparent); border-bottom: 1px solid color-mix(in srgb, var(--line) 70%, transparent); color: var(--fg-1); }
   .clock { display: flex; flex-direction: column; justify-content: center; min-width: 150px; }
   .t { font-size: var(--text-xl); font-weight: 600; color: var(--fg-0); line-height: 1.05; }
   .d { font-size: var(--text-xs); color: var(--fg-2); white-space: nowrap; }

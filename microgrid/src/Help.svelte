@@ -9,17 +9,18 @@
     ['L', 'Login, identity and audit'],
     ['Esc', 'Close this panel, then clear the selection, then the open overlay'],
     ['P', 'Performance readout (when the URL has ?perf)'],
-    ['Tab / Enter', 'Move between elements / select one'],
+    ['R', 'Reset the camera (drag pans, wheel zooms)'],
+    ['Hover / click', 'Live tooltip / select an asset (arrays show their strings)'],
   ];
   const PITCH = [
-    'A campus microgrid, drawn as a live single-line diagram: utility, switchboard, PV, batteries, genset, EV chargers, buildings.',
+    'A living map of a campus microgrid: four PV fields, two batteries, a genset, a ten-bay EV lot, three buildings and the utility substation.',
     'Every number comes from Ignition through the Ignite REST API; the page is served by the gateway itself.',
     'One SSE connection on a folder pattern (/sse, [default]MG/**) carries all 405 tags; the first message is a snapshot.',
-    'Conductor dashes run in the direction of power and speed up with kW; dead paths stop.',
-    'The day is compressed: 24 simulated hours in 12 real minutes. The strip on top shows sun, cloud and tariff.',
+    'Particles stream along the buried conductors: density follows kW, colour follows the source (PV amber, battery blue, grid green, genset grey).',
+    'The sun is real: shadows sweep with the hour and elevation, clouds drift and dim the arrays they cover. 24 simulated hours take 12 real minutes.',
     'The cost and CO₂ ticker compares today with a no-PV, no-battery baseline computed in the same tick.',
     'Try the grid_outage scenario: the campus islands, the genset starts, PV curtails to balance.',
-    'No other host is contacted: fonts are bundled and the diagram is plain SVG.',
+    'No other host is contacted: fonts are bundled and every picture is drawn from code (PixiJS).',
   ];
 </script>
 

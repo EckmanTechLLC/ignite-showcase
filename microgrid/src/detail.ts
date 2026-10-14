@@ -1,6 +1,6 @@
 import { tagBool, tagNum, tagStr } from './live/store.svelte';
 import { num, pretty } from './fmt';
-import { BLDG_NAME } from './diagram/model';
+import { BLDG_NAME } from './campus/model';
 import type { Target } from './selection.svelte';
 
 export interface Row {
@@ -16,7 +16,7 @@ export interface Detail {
 
 const kw = (v: number, d = 1) => `${num(v, d)} kW`;
 
-/** Tooltip content for a diagram element. Called inside a `$derived`, so every tag read is live. */
+/** Tooltip content for a map element. Called inside a `$derived`, so every tag read is live. */
 export function detailFor(t: Target): Detail {
   switch (t.kind) {
     case 'grid': {

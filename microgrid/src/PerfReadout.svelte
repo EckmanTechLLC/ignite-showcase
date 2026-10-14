@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import { onFrameTime } from './anim.svelte';
   import { stats } from './live/store.svelte';
+  import { campus } from './campus/handle.svelte';
 
   // Readout: always available in dev; in a build it is enabled by ?perf (shown at once). "p" toggles.
   const enabled = import.meta.env.DEV || new URLSearchParams(location.search).has('perf');
@@ -14,6 +15,7 @@
   let nodes = $state(0);
   let batchesPerS = $state(0);
   let updatesPerS = $state(0);
+  let gfx = $state({ backend: '', sprites: 0, particles: 0, drawCalls: 0, objects: 0 });
 
   const WINDOW = 180;
   const frames: number[] = [];
@@ -34,6 +36,8 @@
     updatesPerS = stats.updates - lastU;
     lastB = stats.batches;
     lastU = stats.updates;
+    const p = campus.handle?.perf();
+    if (p) gfx = { backend: p.backend, sprites: p.sprites, particles: p.particles, drawCalls: p.drawCalls, objects: p.objects };
   }
   function onKey(e: KeyboardEvent): void {
     if (e.key.toLowerCase() === 'p' && !e.ctrlKey && !e.metaKey && !e.altKey) open = !open;
@@ -47,7 +51,7 @@
     });
     const timer = window.setInterval(sample, 1000);
     // Exposed for scripted measurement (headless runs).
-    (window as unknown as { __perf: () => unknown }).__perf = () => ({ fps, avg, p50, p95, max, nodes, batchesPerS, updatesPerS });
+    (window as unknown as { __perf: () => unknown }).__perf = () => ({ fps, avg, p50, p95, max, nodes, batchesPerS, updatesPerS, ...gfx });
     return () => {
       window.removeEventListener('keydown', onKey);
       stopFrame();
@@ -62,6 +66,7 @@
     <div>p50 {p50.toFixed(1)} ms &middot; p95 {p95.toFixed(1)} ms &middot; max {max.toFixed(1)} ms</div>
     <div>{nodes} DOM nodes</div>
     <div>{batchesPerS} batches/s &middot; {updatesPerS} updates/s</div>
+    <div>{gfx.sprites} sprites &middot; {gfx.particles} particles &middot; {gfx.drawCalls >= 0 ? gfx.drawCalls : 'n/a'} draw calls ({gfx.backend || '-'})</div>
   </div>
 {/if}
 
