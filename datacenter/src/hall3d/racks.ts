@@ -166,6 +166,10 @@ export function createRacks(m: Materials): Racks {
   const tor = sd(new THREE.InstancedMesh(new THREE.BoxGeometry(SRV_W, U * 0.96, 0.3).translate(0, TOR_Y, FRONT - 0.15), new THREE.MeshStandardMaterial({ map: torTexture(), metalness: 0.5, roughness: 0.5 }), n));
 
   const strip = sd(new THREE.InstancedMesh(new THREE.BoxGeometry(0.012, 1.84, 0.006).translate(-hw + 0.016, 1.07, 0.56), new THREE.MeshBasicMaterial({ toneMapped: false }), n));
+  // heat caps on the rack top (visible from the overview): front half = inlet temperature, rear half = outlet temperature
+  const capGeo = (z: number) => new THREE.BoxGeometry(0.46, 0.012, 0.46).translate(0, RACK_H + 0.006, z);
+  const capF = sd(new THREE.InstancedMesh(capGeo(0.27), new THREE.MeshBasicMaterial({ toneMapped: false }), n));
+  const capR = sd(new THREE.InstancedMesh(capGeo(-0.27), new THREE.MeshBasicMaterial({ toneMapped: false }), n));
   const kwBar = sd(new THREE.InstancedMesh(new THREE.BoxGeometry(1, 0.016, 0.006), new THREE.MeshBasicMaterial({ toneMapped: false }), n));
   const zz = sd(new THREE.InstancedMesh(new THREE.PlaneGeometry(0.34, 0.17), new THREE.MeshBasicMaterial({ map: zzTexture(), transparent: true, toneMapped: false, depthWrite: false }), n));
   zz.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
@@ -223,13 +227,15 @@ export function createRacks(m: Materials): Racks {
   RACKS.forEach((r, i) => {
     q.setFromAxisAngle(yAxis, r.face === 1 ? 0 : Math.PI);
     mm.compose(pos.set(r.x, 0, r.z), q, one);
-    for (const o of [frame, innerMesh, cables, door, rear, tor, strip, pick]) o.setMatrixAt(i, mm);
+    for (const o of [frame, innerMesh, cables, door, rear, tor, strip, capF, capR, pick]) o.setMatrixAt(i, mm);
     door.setColorAt(i, col.setRGB(0.5, 0.5, 0.5));
     rear.setColorAt(i, col.setRGB(0.5, 0.5, 0.5));
     strip.setColorAt(i, col.setRGB(0.3, 0.3, 0.3));
+    capF.setColorAt(i, col.setRGB(0.3, 0.3, 0.3));
+    capR.setColorAt(i, col.setRGB(0.3, 0.3, 0.3));
     kwBar.setColorAt(i, col.setRGB(0.9, 1, 1));
   });
-  for (const o of [frame, innerMesh, cables, door, rear, tor, strip, pick]) o.instanceMatrix.needsUpdate = true;
+  for (const o of [frame, innerMesh, cables, door, rear, tor, strip, capF, capR, pick]) o.instanceMatrix.needsUpdate = true;
 
   // nameplates: one merged mesh over a plate atlas ("Rnn", row letter, rating)
   const plates = new Atlas(8, 8, 128, 48);
@@ -246,7 +252,7 @@ export function createRacks(m: Materials): Racks {
   const plateMesh = new THREE.Mesh(pb.geometry('plate')!, new THREE.MeshStandardMaterial({ map: plates.texture, metalness: 0.6, roughness: 0.4 }));
   plateMesh.name = 'rack-plates';
 
-  group.add(frame, innerMesh, cables, door, rear, tor, strip, kwBar, zz, leds, plateMesh, pick, ...classes.map((c) => c.mesh));
+  group.add(frame, innerMesh, cables, door, rear, tor, strip, capF, capR, kwBar, zz, leds, plateMesh, pick, ...classes.map((c) => c.mesh));
 
   // --- dynamic state ---
   const sig = new Array<string>(n).fill('');
@@ -283,6 +289,8 @@ export function createRacks(m: Materials): Racks {
       door.setColorAt(i, setRgb(col, offline ? OFF : scale3(heat, 0.9)));
       rear.setColorAt(i, setRgb(col, offline ? OFF : scale3(heatOut, 0.8)));
       strip.setColorAt(i, setRgb(col, offline ? OFF : heat));
+      capF.setColorAt(i, setRgb(col, offline ? OFF : heat));
+      capR.setColorAt(i, setRgb(col, offline ? OFF : heatOut));
       const fr = offline ? 0 : Math.min(1, Math.max(0.03, kw / MAX_KW));
       const len = 0.46 * fr;
       place(kwBar, i, r, -0.23 + len / 2, 1.93, 0.557, Math.max(len, 0.0001), 1, false);
@@ -340,6 +348,8 @@ export function createRacks(m: Materials): Racks {
     door.instanceColor!.needsUpdate = true;
     rear.instanceColor!.needsUpdate = true;
     strip.instanceColor!.needsUpdate = true;
+    capF.instanceColor!.needsUpdate = true;
+    capR.instanceColor!.needsUpdate = true;
     kwBar.instanceMatrix.needsUpdate = true;
     zz.instanceMatrix.needsUpdate = true;
     for (const c of classes) {
