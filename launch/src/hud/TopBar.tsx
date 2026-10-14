@@ -64,7 +64,7 @@ function Connection() {
     [c.state, c.lastEventAt, c.tagCount],
   );
   return (
-    <div className="stat conn">
+    <div className="stat conn" title={c.trial || undefined}>
       <span className="stat-l">Link</span>
       <span className="stat-v">
         <i className={`dot ${c.state}`} />
@@ -72,7 +72,7 @@ function Connection() {
       </span>
       {c.history === 'unavailable' && (
         <span className="stat-n" role="status">
-          History/alarms unavailable &mdash; gateway trial may have expired
+          Trial expired &mdash; history/alarms paused
         </span>
       )}
     </div>

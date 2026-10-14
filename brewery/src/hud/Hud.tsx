@@ -97,12 +97,12 @@ export default function Hud() {
         </div>
       </div>
 
-      <div class="tile link" title={live.history === 'unavailable' ? 'History/alarms unavailable: the gateway trial may have expired' : ''}>
+      <div class="tile link" title={live.history === 'unavailable' ? 'Trial expired \u2014 history/alarms paused' : live.trial}>
         <div class="k">SSE LINK</div>
         <div class="linkrow"><i class={`dot ${linkTone()}`} /><b>{linkLabel()}</b></div>
         <div class="s">{live.tagCount ? `live · ${live.tagCount} tags · ` : ''}{ageText()}</div>
         <Show when={live.history === 'unavailable'}>
-          <div class="s note" role="status">History/alarms unavailable — gateway trial may have expired</div>
+          <div class="s note" role="status">Trial expired — history/alarms paused</div>
         </Show>
       </div>
 

@@ -1,4 +1,4 @@
-import { probeHistory, subscribe, type ConnectionState, type HistoryHealth, type Subscription, type TagUpdate } from '@ignite/client';
+import { historyOf, probeHealth, subscribe, trialDetail, type ConnectionState, type HistoryHealth, type Subscription, type TagUpdate } from '@ignite/client';
 import { LIVE_PATTERN, PREFIX } from './paths';
 
 /** A tag value as the gateway delivers it. */
@@ -34,8 +34,10 @@ export const live = $state({
   connection: 'connecting' as ConnectionState,
   /** Tags the server confirmed for the stream (`event: subscribed`); 0 until then. */
   tagCount: 0,
-  /** Historian probe: 'unavailable' when history answers with nothing but nulls (gateway trial expired). */
+  /** From GET /system/status: 'unavailable' when the gateway trial has expired (historian/alarms stopped). */
   history: 'unknown' as HistoryHealth,
+  /** Quiet trial detail ("Trial · 1 h 42 m left"); '' when not in Trial mode. */
+  trial: '',
   wallNow: Date.now(),
   lastDataAt: 0,
 });
@@ -54,13 +56,14 @@ function apply(updates: TagUpdate[]): void {
   live.lastDataAt = Date.now();
 }
 
-/** Historized tag that moves whenever the sim runs; its history going all-null means the historian stopped. */
-const HISTORY_PROBE_TAG = PREFIX + 'KPI/NetLoadkW';
-const HISTORY_PROBE_MS = 60_000;
+const HEALTH_PROBE_MS = 60_000;
 
 async function probe(): Promise<void> {
-  const h = await probeHistory(HISTORY_PROBE_TAG);
-  if (h !== 'unknown') live.history = h;
+  const h = await probeHealth();
+  const history = historyOf(h);
+  if (history === 'unknown') return;
+  live.history = history;
+  live.trial = trialDetail(h);
 }
 
 let started = false;
@@ -76,7 +79,7 @@ export function startLive(): void {
     onSubscribed: (n) => (live.tagCount = n),
   });
   void probe();
-  timers = [window.setInterval(() => (live.wallNow = Date.now()), 500), window.setInterval(probe, HISTORY_PROBE_MS)];
+  timers = [window.setInterval(() => (live.wallNow = Date.now()), 500), window.setInterval(probe, HEALTH_PROBE_MS)];
 }
 
 export function stopLive(): void {

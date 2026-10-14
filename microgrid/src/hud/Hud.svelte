@@ -98,11 +98,11 @@
     </div>
   </div>
 
-  <div class="tile link" title={live.history === 'unavailable' ? 'History/alarms unavailable: the gateway trial may have expired' : ''}>
+  <div class="tile link" title={live.history === 'unavailable' ? 'Trial expired \u2014 history/alarms paused' : live.trial}>
     <div class="k">SSE LINK</div>
     <div class="linkrow"><i class="dot {linkTone}"></i><b>{linkLabel}</b></div>
     <div class="s">{live.tagCount ? `live · ${live.tagCount} tags · ` : ''}{ageText}</div>
-    {#if live.history === 'unavailable'}<div class="s note" role="status">History/alarms unavailable &mdash; gateway trial may have expired</div>{/if}
+    {#if live.history === 'unavailable'}<div class="s note" role="status">Trial expired &mdash; history/alarms paused</div>{/if}
   </div>
 
   <button class="tile id" title={idTitle} onclick={() => togglePanel('identity')}>

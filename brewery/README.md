@@ -35,7 +35,7 @@ One SSE connection. The gateway caps a subscription at 1 000 expanded tags and t
 (`Time`, `Recipes`, `Brewhouse`, `Cellar`, `Packaging`, `Utilities`, `Batches`, `Schedule`, `KPI`, `_Sim_/*`, `_Sim_/Fault`, `_Sim_/Request`); `event: subscribed`
 confirms 908. `paths.ts` and `units.ts` are generated from `sim/brewery/tags.json` (`npm run gen`, run by `dev`, `build` and `test`). The store keeps a plain
 copy of every value (read by the render loop) and one Solid signal per tag, created on first read and updated inside `batch()`.
-Health probe: a 6-row history request for `Utilities/Energy/TodayKwh` (it accumulates all the time, unlike a fermenter's gravity, which stands still in conditioning) every 60 s; all nulls means the gateway trial expired.
+Health probe: `GET /system/status` every 60 s; `trialExpired` means history and alarms stop (tags keep moving).
 
 ## Rendering notes
 
@@ -67,8 +67,9 @@ See `docs/perf.md` (Craft Brewery). The Pixi chunk (about 585 kB raw, 174 kB gz)
 | `GET /sse` | key | `live/store.ts`: one connection on 12 folder patterns covering 908 of the 1 039 tags (the gateway caps a subscription at 1 000), snapshot then changes |
 | `GET /tags/read` | key | n/a: the SSE stream opens with a snapshot of every subscribed tag |
 | `GET /tags/browse` | key | n/a: names are generated from `sim/brewery/tags.json` at build time (`scripts/gen-paths.mjs`) |
-| `GET /tags/history` | key | Health probe (`live/store.ts`, `Utilities/Energy/TodayKwh`, every 60 s) and every Trends chart (`overlays/trends/history.ts`, 240 points) |
+| `GET /tags/history` | key | Every Trends chart (`overlays/trends/history.ts`, 240 points) |
 | `POST /tags/write` | write | n/a: every state change goes through the `brew` library, which owns the `_Sim_` and `Schedule` tags; a Viewer gets 403 (curl matrix) |
+| `GET /system/status` | key | Health probe (`probeHealth()`, on connect and every 60 s): `license.trialExpired` drives the "Trial expired - history/alarms paused" notice; in Trial mode the link chip's tooltip shows "Trial - 1 h 42 m left" (`live/store.ts`) |
 | `GET /alarms/status` | key | Alarm board, HUD tile and dock badge (`overlays/alarms/store.ts`), polled every 3 s, paused while the tab is hidden |
 | `GET /alarms/history` | key | n/a: the lab has no alarm journal; `/alarms/status` carries cleared events with active and clear times, enough for the cascade timeline |
 | `POST /alarms/acknowledge` | write | Alarm board: per row, per group, all visible |

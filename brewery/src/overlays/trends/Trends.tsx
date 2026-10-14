@@ -32,7 +32,7 @@ export default function Trends() {
       }
     >
       <Show when={live.history === 'unavailable'}>
-        <p class="warn" role="status">History unavailable: the gateway trial may have expired. Charts fill from live values.</p>
+        <p class="warn" role="status">Trial expired: history is paused. Charts fill from live values.</p>
       </Show>
       <p class="hint">X axis in simulated time (1 real minute = 1 simulated hour at 60×; D = sim day). History reads the 1 s tags, {240} points per window; live values are appended per bucket.</p>
 

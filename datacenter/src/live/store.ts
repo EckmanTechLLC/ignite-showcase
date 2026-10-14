@@ -1,5 +1,5 @@
 import { computed, shallowRef, type ComputedRef, type ShallowRef } from 'vue';
-import { probeHistory, subscribe, type ConnectionState, type HistoryHealth, type Subscription, type TagUpdate } from '@ignite/client';
+import { historyOf, probeHealth, subscribe, trialDetail, type ConnectionState, type HistoryHealth, type Subscription, type TagUpdate } from '@ignite/client';
 import { LIVE_PATTERN, PREFIX } from './paths';
 
 /** A tag value as the gateway delivers it. */
@@ -47,8 +47,10 @@ const short = (full: string) => (full.startsWith(PREFIX) ? full.slice(PREFIX.len
 export const connection = shallowRef<ConnectionState>('connecting');
 /** Tags the server confirmed for the stream (`event: subscribed`); 0 until then. */
 export const tagCount = shallowRef(0);
-/** Historian probe: 'unavailable' when history answers with nothing but nulls (gateway trial expired). */
+/** From GET /system/status: 'unavailable' when the gateway trial has expired (historian/alarms stopped). */
 export const historyHealth = shallowRef<HistoryHealth>('unknown');
+/** Quiet trial detail ("Trial · 1 h 42 m left"); '' when not in Trial mode. */
+export const trialText = shallowRef('');
 export const wallNow = shallowRef(Date.now());
 export const lastDataAt = shallowRef(0);
 
@@ -65,13 +67,14 @@ function apply(updates: TagUpdate[]): void {
   lastDataAt.value = Date.now();
 }
 
-/** Historized tag that moves whenever the sim runs; its history going all-null means the historian stopped. */
-const HISTORY_PROBE_TAG = PREFIX + 'Hall/TotalFacilityKW';
-const HISTORY_PROBE_MS = 60_000;
+const HEALTH_PROBE_MS = 60_000;
 
 async function probe(): Promise<void> {
-  const h = await probeHistory(HISTORY_PROBE_TAG);
-  if (h !== 'unknown') historyHealth.value = h;
+  const h = await probeHealth();
+  const history = historyOf(h);
+  if (history === 'unknown') return;
+  historyHealth.value = history;
+  trialText.value = trialDetail(h);
 }
 
 let started = false;
@@ -87,7 +90,7 @@ export function startLive(): void {
     onSubscribed: (n) => (tagCount.value = n),
   });
   void probe();
-  timers = [window.setInterval(() => (wallNow.value = Date.now()), 500), window.setInterval(probe, HISTORY_PROBE_MS)];
+  timers = [window.setInterval(() => (wallNow.value = Date.now()), 500), window.setInterval(probe, HEALTH_PROBE_MS)];
 }
 
 export function stopLive(): void {

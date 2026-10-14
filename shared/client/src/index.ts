@@ -22,7 +22,17 @@ export {
   type SubscribeOptions,
   type Subscription,
 } from './sse.js';
-export { classifyHistory, probeHistory, type HistoryHealth } from './health.js';
+export {
+  classifyHistory,
+  probeHistory,
+  probeHealth,
+  historyOf,
+  trialDetail,
+  TRIAL_EXPIRED_TEXT,
+  type HistoryHealth,
+  type HealthProbe,
+} from './health.js';
+export * from './api/system.js';
 export * from './api/tags.js';
 export * from './api/alarms.js';
 export * from './api/scripts.js';

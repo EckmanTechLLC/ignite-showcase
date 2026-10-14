@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { configureEnv } from '../src/env.js';
-import { classifyHistory, probeHistory } from '../src/health.js';
+import { classifyHistory, historyOf, probeHealth, probeHistory, trialDetail } from '../src/health.js';
+import { systemStatus } from '../src/api/system.js';
 import { MemoryStorage, mockFetch } from './helpers.js';
 
 beforeEach(() => {
@@ -35,5 +36,50 @@ describe('history health', () => {
     expect(url.searchParams.get('paths')).toBe('[default]X/y');
     mockFetch(500, { error: 'x' });
     expect(await probeHistory('[default]X/y')).toBe('unknown');
+  });
+});
+
+const status = (over: object = {}) => ({
+  gatewayName: 'gw',
+  uptimeMs: 1,
+  license: { mode: 'Trial', trialExpired: false, trialTimeLeftMs: 6_120_000, ...over },
+});
+
+describe('probeHealth', () => {
+  it('uses /system/status and makes no history request', async () => {
+    const f = mockFetch(200, status());
+    const h = await probeHealth('[default]X/y');
+    expect(f).toHaveBeenCalledTimes(1);
+    expect(new URL((f.mock.calls[0] as unknown as [string])[0]).pathname).toBe('/data/ignite/system/status');
+    expect(h).toEqual({ source: 'status', trialExpired: false, trialTimeLeftMs: 6_120_000, licenseMode: 'Trial', historian: null });
+    expect(historyOf(h)).toBe('ok');
+    expect(trialDetail(h)).toBe('Trial · 1 h 42 m left');
+  });
+  it('reports an expired trial', async () => {
+    mockFetch(200, status({ trialExpired: true, trialTimeLeftMs: 0 }));
+    const h = await probeHealth();
+    expect(h.trialExpired).toBe(true);
+    expect(historyOf(h)).toBe('unavailable');
+    expect(trialDetail(h)).toBe('');
+  });
+  it('falls back to the history probe on 404 and 405', async () => {
+    for (const code of [404, 405]) {
+      const f = mockFetch(code, { error: 'x' });
+      let n = 0;
+      f.mockImplementation(async () => (n++ === 0 ? new Response('{}', { status: code }) : new Response(JSON.stringify({ rows: [[t, null], [t, null]] }), { status: 200 })));
+      const h = await probeHealth('[default]X/y');
+      expect(f).toHaveBeenCalledTimes(2);
+      expect(h).toMatchObject({ source: 'history', trialExpired: true, historian: 'unavailable', licenseMode: null });
+    }
+  });
+  it('does not guess without a fallback path, and swallows other errors', async () => {
+    mockFetch(404, {});
+    expect(await probeHealth()).toMatchObject({ source: 'history', trialExpired: null, historian: null });
+    mockFetch(500, {});
+    expect(await probeHealth('[default]X/y')).toMatchObject({ source: 'status', trialExpired: null });
+  });
+  it('systemStatus returns null on 404', async () => {
+    mockFetch(404, {});
+    expect(await systemStatus()).toBeNull();
   });
 });

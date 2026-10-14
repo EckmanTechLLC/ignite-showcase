@@ -1,4 +1,4 @@
-import { probeHistory, subscribe, type BatchInfo, type ConnectionState, type HistoryHealth, type TagUpdate } from '@ignite/client';
+import { historyOf, probeHealth, subscribe, trialDetail, type BatchInfo, type ConnectionState, type HistoryHealth, type TagUpdate } from '@ignite/client';
 import { PROVIDER, TAG_NAMES, type TagName } from './paths';
 
 /**
@@ -22,11 +22,13 @@ export interface ConnectionInfo {
   loaded: boolean;
   /** Tags the server confirmed for this connection (`event: subscribed`); 0 until then. */
   tagCount: number;
-  /** Historian probe: 'unavailable' when history answers with nothing but nulls (gateway trial expired). */
+  /** From GET /system/status: 'unavailable' when the gateway trial has expired (historian/alarms stopped). */
   history: HistoryHealth;
+  /** Quiet trial detail ("Trial · 1 h 42 m left"); '' when not in Trial mode. */
+  trial: string;
 }
 
-let conn: ConnectionInfo = { state: 'connecting', lastEventAt: 0, loaded: false, tagCount: 0, history: 'unknown' };
+let conn: ConnectionInfo = { state: 'connecting', lastEventAt: 0, loaded: false, tagCount: 0, history: 'unknown', trial: '' };
 const connListeners = new Set<Listener>();
 
 function emitConn(patch: Partial<ConnectionInfo>): void {
@@ -125,9 +127,7 @@ function onBatch(batch: TagUpdate[], info: BatchInfo): void {
 /** One folder subscription covers every Launch tag (one SSE connection per page). */
 export const LIVE_PATTERN = `${PROVIDER}Launch/**`;
 
-/** Historized tag that moves whenever the sim runs; its history going all-null means the historian stopped. */
-const HISTORY_PROBE_TAG = `${PROVIDER}Launch/Propellant/LOX/TankLevelPct`;
-const HISTORY_PROBE_MS = 60_000;
+const HEALTH_PROBE_MS = 60_000;
 
 let started = false;
 
@@ -140,11 +140,14 @@ export function startLive(): void {
     onSubscribed: (tagCount) => emitConn({ tagCount }),
   });
   const probe = () =>
-    void probeHistory(HISTORY_PROBE_TAG).then((history) => {
-      if (history !== 'unknown' && history !== conn.history) emitConn({ history });
+    void probeHealth().then((h) => {
+      const history = historyOf(h);
+      if (history === 'unknown') return;
+      const trial = trialDetail(h);
+      if (history !== conn.history || trial !== conn.trial) emitConn({ history, trial });
     });
   probe();
-  setInterval(probe, HISTORY_PROBE_MS);
+  setInterval(probe, HEALTH_PROBE_MS);
 }
 
 /** Dev tool (exposed on window in dev builds only): set tag values without a gateway. `fresh` marks them as just changed. */

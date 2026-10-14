@@ -17,7 +17,7 @@
     {/each}
   {/snippet}
 
-  {#if live.history === 'unavailable'}<p class="warn" role="status">History unavailable: the gateway trial may have expired. Charts fill from live values.</p>{/if}
+  {#if live.history === 'unavailable'}<p class="warn" role="status">Trial expired: history is paused. Charts fill from live values.</p>{/if}
   <p class="hint">X axis in simulated hours (24 h = 12 real minutes at 120×). History reads the 1 s tags, 144 points per window.</p>
 
   {#if picked}

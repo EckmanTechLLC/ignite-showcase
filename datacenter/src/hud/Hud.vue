@@ -5,7 +5,7 @@ import { heatColor } from '../heat';
 import { num } from '../fmt';
 import { hasCritical } from '../overlays/alarms/store';
 import { panel } from '../overlays/ui';
-import { connection, dataAgeS, historyHealth, tagCount } from '../live/store';
+import { connection, dataAgeS, historyHealth, tagCount, trialText } from '../live/store';
 import { useTagNumber, useTagString } from '../live/store';
 
 defineProps<{ legend: boolean }>();
@@ -105,11 +105,11 @@ const age = computed(() => (Number.isFinite(dataAgeS.value) ? (dataAgeS.value < 
       </div>
     </div>
 
-    <div class="tile link" :title="historyHealth === 'unavailable' ? 'History/alarms unavailable: the gateway trial may have expired' : ''">
+    <div class="tile link" :title="historyHealth === 'unavailable' ? 'Trial expired \u2014 history/alarms paused' : trialText">
       <div class="k">SSE LINK</div>
       <div class="linkrow"><i class="dot" :class="linkTone" /><b>{{ linkLabel }}</b></div>
       <div class="s">{{ tagCount ? `live \u00b7 ${tagCount} tags \u00b7 ` : '' }}{{ age }}</div>
-      <div v-if="historyHealth === 'unavailable'" class="s note" role="status">History/alarms unavailable &mdash; gateway trial may have expired</div>
+      <div v-if="historyHealth === 'unavailable'" class="s note" role="status">Trial expired &mdash; history/alarms paused</div>
     </div>
 
     <button class="toggle" :class="{ on: legend }" :aria-pressed="legend" @click="$emit('update:legend', !legend)">LEGEND</button>

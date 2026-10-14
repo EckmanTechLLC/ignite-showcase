@@ -1,4 +1,5 @@
 import { getHistory } from './api/tags.js';
+import { systemStatus } from './api/system.js';
 
 /**
  * 'ok'          history rows carry values
@@ -27,4 +28,50 @@ export async function probeHistory(path: string, windowMs = 10 * 60_000, rows = 
   } catch {
     return 'unknown';
   }
+}
+
+export interface HealthProbe {
+  /** 'status' = GET /system/status answered; 'history' = route missing (older module), history probe used. */
+  source: 'status' | 'history';
+  trialExpired: boolean | null;
+  trialTimeLeftMs: number | null;
+  licenseMode: string | null;
+  historian: HistoryHealth | null;
+}
+
+/**
+ * Licence/trial probe. Asks /system/status first; only when that route is missing (404/405 -> null) does it fall
+ * back to the history probe on `fallbackPath` (skipped when no path is given). Never throws.
+ */
+export async function probeHealth(fallbackPath?: string): Promise<HealthProbe> {
+  try {
+    const s = await systemStatus();
+    if (s) {
+      return {
+        source: 'status',
+        trialExpired: s.license.trialExpired,
+        trialTimeLeftMs: s.license.trialTimeLeftMs,
+        licenseMode: s.license.mode,
+        historian: null,
+      };
+    }
+  } catch {
+    return { source: 'status', trialExpired: null, trialTimeLeftMs: null, licenseMode: null, historian: null };
+  }
+  const historian = fallbackPath ? await probeHistory(fallbackPath) : null;
+  return { source: 'history', trialExpired: historian === null || historian === 'unknown' ? null : historian === 'unavailable', trialTimeLeftMs: null, licenseMode: null, historian };
+}
+
+/** History/alarms state implied by a probe: 'unknown' when it carried no answer (callers keep their last value). */
+export function historyOf(h: HealthProbe): HistoryHealth {
+  return h.trialExpired === null ? 'unknown' : h.trialExpired ? 'unavailable' : 'ok';
+}
+
+export const TRIAL_EXPIRED_TEXT = 'Trial expired \u2014 history/alarms paused';
+
+/** "Trial \u00b7 1 h 42 m left" while in Trial mode with time left; '' otherwise. */
+export function trialDetail(h: Pick<HealthProbe, 'licenseMode' | 'trialExpired' | 'trialTimeLeftMs'>): string {
+  if (h.trialExpired || h.licenseMode !== 'Trial' || h.trialTimeLeftMs === null || h.trialTimeLeftMs <= 0) return '';
+  const m = Math.floor(h.trialTimeLeftMs / 60_000);
+  return `Trial \u00b7 ${m >= 60 ? `${Math.floor(m / 60)} h ${m % 60} m` : `${m} m`} left`;
 }

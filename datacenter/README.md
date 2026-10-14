@@ -50,9 +50,10 @@ The Identity panel (`L`) follows `/auth/session` `authMethod`:
 |---|---|---|
 | `GET /tags/read` | n/a | No seed read and no constants poll: constants (rack Row/Feed/Workload, PDU Feed, CRAH Zone, Hall/CapacityKW) arrive in the SSE snapshot |
 | `GET /sse` | `live/store.ts` | One connection on the folder pattern `[default]DC/**` (675 tags, 646 rendered), coalesced per frame |
-| `GET /tags/history` | `overlays/trends/history.ts`, `live/store.ts` | Also the health probe (6 rows of `Hall/TotalFacilityKW` over 10 min, every 60 s). Trends: | `returnSize` 90 / 120 / 144 for 15 min / 1 h / 24 h; values arrive as strings; nulls and implausible constants (|v| < 1e-6 or > 1e7) are dropped |
+| `GET /tags/history` | `overlays/trends/history.ts`, `live/store.ts` | Trends: | `returnSize` 90 / 120 / 144 for 15 min / 1 h / 24 h; values arrive as strings; nulls and implausible constants (|v| < 1e-6 or > 1e7) are dropped |
 | `GET /tags/browse` | n/a | Tag paths are generated at build time from `sim/datacenter/tags.json`; there is nothing to discover at runtime |
 | `POST /tags/write` | n/a | The scene is read-only; scenarios are steered through the `dc` library, which owns the `_Sim_` tags |
+| `GET /system/status` | `live/store.ts` | Health probe (`probeHealth()`, on connect and every 60 s): `license.trialExpired` drives the "Trial expired - history/alarms paused" notice; in Trial mode the link chip's tooltip shows "Trial - 1 h 42 m left" |
 | `GET /alarms/status` | `overlays/alarms/store.ts` | Filters other providers' alarms (`DC/` only) and the zero-length load artefacts (`activeTime == clearTime`) |
 | `POST /alarms/acknowledge` | `overlays/alarms/store.ts` | One call per alarm id; write tier |
 | `GET /alarms/history` | n/a | `/alarms/status` already carries cleared events with active/clear times, enough for the storm timeline |
@@ -79,4 +80,4 @@ the browser (`window.__IGNITE_ENV__ = { IGNITE_AUDIT_PROFILE: '...' }`) to see t
 
 One SSE connection per page: `GET /sse?paths=[default]DC/**`. The gateway expands the folder once at connect (675 leaf tags, limit 1 000), sends every value as a snapshot (applied as one batch), then `event: subscribed` with the count, then changes; the HUD shows `live · N tags · data age`. Before the 20-minute connection cap it sends `event: reconnect` and the client reopens at once (fresh snapshot, no polling needed). The gateway allows at most 64 live streams in total; beyond that it answers HTTP 503 `{"error":"too many live connections"}`, so every open tab costs one slot. Tags added to the folder later appear after the next reconnect. `test/paths.test.ts` asserts the pattern URL stays under 1 000 chars.
 
-The HUD link tile reads LIVE / STALE (no data for 10 s) / CONNECTING / RECONNECTING, and shows "History/alarms unavailable - gateway trial may have expired" when `/tags/history` for a moving tag returns only nulls (the 2-hour trial stops the historian and alarms while tags keep moving).
+The HUD link tile reads LIVE / STALE (no data for 10 s) / CONNECTING / RECONNECTING, and shows "Trial expired - history/alarms paused" when `GET /system/status` reports `license.trialExpired` (the 2-hour trial stops the historian and alarms while tags keep moving); while a trial runs the tile's tooltip reads "Trial - 1 h 42 m left".

@@ -1,6 +1,6 @@
 import { batch, createSignal, type Accessor } from 'solid-js';
 import { createStore } from 'solid-js/store';
-import { probeHistory, subscribe, type ConnectionState, type HistoryHealth, type Subscription, type TagUpdate } from '@ignite/client';
+import { historyOf, probeHealth, subscribe, trialDetail, type ConnectionState, type HistoryHealth, type Subscription, type TagUpdate } from '@ignite/client';
 import { LIVE_PATTERNS, PREFIX } from './paths';
 
 /** A tag value as the gateway delivers it. */
@@ -59,8 +59,10 @@ export const [live, setLive] = createStore({
   connection: 'connecting' as ConnectionState,
   /** Tags the server confirmed for the stream (`event: subscribed`); 0 until then. */
   tagCount: 0,
-  /** Historian probe: 'unavailable' when history answers with nothing but nulls (gateway trial expired). */
+  /** From GET /system/status: 'unavailable' when the gateway trial has expired (historian/alarms stopped). */
   history: 'unknown' as HistoryHealth,
+  /** Quiet trial detail ("Trial · 1 h 42 m left"); '' when not in Trial mode. */
+  trial: '',
   wallNow: Date.now(),
   lastDataAt: 0,
   /** True once the first snapshot has been applied. */
@@ -91,13 +93,13 @@ function apply(updates: TagUpdate[]): void {
   });
 }
 
-/** Historized tag that moves every few seconds whatever the plant does (the day's energy total); all-null history means the historian stopped. A fermenter's gravity is not usable: it stands still in conditioning. */
-const HISTORY_PROBE_TAG = PREFIX + 'Utilities/Energy/TodayKwh';
-const HISTORY_PROBE_MS = 60_000;
+const HEALTH_PROBE_MS = 60_000;
 
 async function probe(): Promise<void> {
-  const h = await probeHistory(HISTORY_PROBE_TAG);
-  if (h !== 'unknown') setLive('history', h);
+  const h = await probeHealth();
+  const history = historyOf(h);
+  if (history === 'unknown') return;
+  setLive({ history, trial: trialDetail(h) });
 }
 
 let started = false;
@@ -113,7 +115,7 @@ export function startLive(): void {
     onSubscribed: (n) => setLive('tagCount', n),
   });
   void probe();
-  timers = [window.setInterval(() => setLive('wallNow', Date.now()), 500), window.setInterval(probe, HISTORY_PROBE_MS)];
+  timers = [window.setInterval(() => setLive('wallNow', Date.now()), 500), window.setInterval(probe, HEALTH_PROBE_MS)];
 }
 
 export function stopLive(): void {

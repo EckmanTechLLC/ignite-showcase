@@ -42,8 +42,8 @@ Headless Chrome, 1920x1080, live data (software-rendered, so only the look is re
 
 One SSE connection on the folder pattern `[default]MG/**` (405 tags). The server answers with `event: subscribed` (count) and the client
 delivers the initial snapshot as one batch, applied in one pass to a reactive map (`src/live/store.svelte.ts`). `src/live/paths.ts` and
-`units.ts` are generated from `sim/microgrid/tags.json` (`npm run gen`, run by `dev`, `build` and `test`). Health probe: a 6-row history
-request for `KPI/NetLoadkW` every 60 s; all nulls means the gateway trial expired (history and alarms stop, tags keep moving).
+`units.ts` are generated from `sim/microgrid/tags.json` (`npm run gen`, run by `dev`, `build` and `test`). Health probe: `GET /system/status`
+every 60 s; `trialExpired` means history and alarms stop (tags keep moving).
 
 ## Development
 
@@ -57,8 +57,9 @@ Copy `.env.example` to `.env.development.local` (git-ignored; never `.env.local`
 | `GET /sse` | key | `live/store.svelte.ts`: one connection on `[default]MG/**` (405 tags), snapshot then changes |
 | `GET /tags/read` | key | n/a: the SSE stream opens with a snapshot of every subscribed tag |
 | `GET /tags/browse` | key | n/a: names are generated from `sim/microgrid/tags.json` at build time (`scripts/gen-paths.mjs`) |
-| `GET /tags/history` | key | Health probe (`live/store.svelte.ts`, `KPI/NetLoadkW`, every 60 s) and every Trends chart (`overlays/trends/history.ts`, `returnSize` 144) |
+| `GET /tags/history` | key | Every Trends chart (`overlays/trends/history.ts`, `returnSize` 144) |
 | `POST /tags/write` | write | n/a: every state change goes through the `mg` library, which owns the `_Sim_` tags; a Viewer gets 403 (curl matrix) |
+| `GET /system/status` | key | Health probe (`probeHealth()`, on connect and every 60 s): `license.trialExpired` drives the "Trial expired - history/alarms paused" notice; in Trial mode the link chip's tooltip shows "Trial - 1 h 42 m left" (`live/store.svelte.ts`) |
 | `GET /alarms/status` | key | Alarm board and HUD tile (`overlays/alarms/store.svelte.ts`), polled every 3 s, paused while the tab is hidden |
 | `GET /alarms/history` | key | n/a: the lab has no alarm journal (the launch and datacenter demos do not use one either) and `/alarms/status` already carries cleared events with active and clear times, enough for the cascade timeline; the history tab is therefore not offered |
 | `POST /alarms/acknowledge` | write | Alarm board: per row, per group, all visible |
