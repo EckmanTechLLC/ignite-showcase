@@ -35,3 +35,16 @@ Runtime libraries bundled into `brewery/dist` (npm, no CDN):
 | echarts (declared for task-74, not imported yet) | 6.1.0 | Apache-2.0 |
 
 Build-time only: `vite-plugin-solid` 2.11.14 (MIT).
+
+## Data Center demo (`datacenter/`)
+
+The 3D hall is procedural: every rack, CRAH, cabinet, pipe, busway, the floor tile pattern, the row/equipment labels and the "zz" offline mark are generated in code (geometry, a canvas-painted tile and label atlas, and shaders). No model, image or HDR file is bundled beyond the shared theme fonts.
+
+Runtime libraries bundled into `datacenter/dist` (npm, no CDN); the three.js/TresJS code is one lazy chunk loaded after the first paint:
+
+| Library | Version | Licence |
+|---|---|---|
+| three | 0.186.1 (same as Launch) | MIT |
+| @tresjs/core, @tresjs/cientos | 5.9.3 | MIT |
+| camera-controls (via cientos) | 3.1.2 | MIT |
+| echarts | 6.1.0 | Apache-2.0 |

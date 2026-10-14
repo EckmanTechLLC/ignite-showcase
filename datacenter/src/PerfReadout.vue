@@ -2,6 +2,7 @@
 import { onBeforeUnmount, onMounted, ref } from 'vue';
 import { onFrameTime } from './anim';
 import { stats } from './live/store';
+import { hallPerf } from './hall3d/perfStats';
 
 // Readout: always available in dev; in a build it is enabled by ?perf (shown at once). "p" toggles.
 const startOpen = new URLSearchParams(location.search).has('perf');
@@ -12,6 +13,9 @@ const p50 = ref(0);
 const p95 = ref(0);
 const max = ref(0);
 const nodes = ref(0);
+const calls = ref(0);
+const triangles = ref(0);
+const particles = ref(0);
 const batchesPerS = ref(0);
 const updatesPerS = ref(0);
 
@@ -32,6 +36,9 @@ function sample(): void {
   p95.value = sorted[Math.floor(sorted.length * 0.95)];
   max.value = sorted[sorted.length - 1];
   nodes.value = document.getElementsByTagName('*').length;
+  calls.value = hallPerf.calls;
+  triangles.value = hallPerf.triangles;
+  particles.value = hallPerf.particles;
   batchesPerS.value = stats.batches - lastB;
   updatesPerS.value = stats.updates - lastU;
   lastB = stats.batches;
@@ -52,6 +59,7 @@ onMounted(() => {
   // Exposed for scripted measurement (headless runs).
   (window as unknown as { __perf: () => unknown }).__perf = () => ({
     fps: fps.value, avg: avg.value, p50: p50.value, p95: p95.value, max: max.value, nodes: nodes.value,
+    calls: calls.value, triangles: triangles.value, particles: particles.value,
     batchesPerS: batchesPerS.value, updatesPerS: updatesPerS.value,
   });
 });
@@ -66,6 +74,7 @@ onBeforeUnmount(() => {
   <div v-if="open" class="perf mono" aria-hidden="true">
     <div><b>{{ fps.toFixed(0) }}</b> fps &middot; {{ avg.toFixed(1) }} ms avg</div>
     <div>p50 {{ p50.toFixed(1) }} ms &middot; p95 {{ p95.toFixed(1) }} ms &middot; max {{ max.toFixed(1) }} ms</div>
+    <div>{{ calls }} draw calls &middot; {{ (triangles / 1000).toFixed(1) }}k tris &middot; {{ particles }} particles</div>
     <div>{{ nodes }} DOM nodes</div>
     <div>{{ batchesPerS }} batches/s &middot; {{ updatesPerS }} updates/s</div>
   </div>

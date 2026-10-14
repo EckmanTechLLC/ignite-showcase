@@ -1,6 +1,6 @@
 # Data Center (Vue 3)
 
-Top-down animated SVG data hall bound to live `[default]DC/` tags (task-56) with the operating overlays (task-57):
+3D data hall (Vue 3 + TresJS, task-80) bound to live `[default]DC/` tags (task-56) with the operating overlays (task-57):
 alarm board, trends, scenario controls, login and audit. Served by the Ignite gateway at site `datacenter`; the
 gateway injects `window.__IGNITE_ENV__` (gateway URL, site, read key, and `IGNITE_AUDIT_PROFILE` from the site's
 `envVars`). Nothing else configures the page.
@@ -14,12 +14,13 @@ gateway injects `window.__IGNITE_ENV__` (gateway URL, site, read key, and `IGNIT
 | `C` | Controls | Utility loss/restore, fail/restore CRAH 1-4, start migration, workload profile, restore all (confirm); Director: speed 0.5/1/2/4 and raw scenario set. Mode, scenario and speed chips live in the header; each action toasts the library message and refreshes `dc.status()`. |
 | `L` | Identity | Login, session tier chip, logout, audit view (Director). |
 | `?` | Help | Shortcuts and the Ignite routes this page uses (`?about` in the URL opens it at load). |
+| `1`-`5`, `R` | Camera | Presets: overview, cold aisle A/B walk-through, hot aisle, electrical room, roof; `R` resets. Idle overview orbits slowly; click an item to fly to it. |
 
 `Esc` closes a panel or the selection. `?perf` in the URL shows the performance readout (always available in dev); `p` toggles it.
 
 ## Screenshots
 
-Headless Chrome, 1920x1080, live data.
+Headless Chrome, 1920x1080, live data (these show the SVG hall of tasks 56-59; refreshed for the 3D hall in task-81).
 
 ![Hall overview](../docs/screenshots/datacenter-hall.png)
 ![Alarm board](../docs/screenshots/datacenter-alarms.png)
@@ -27,7 +28,7 @@ Headless Chrome, 1920x1080, live data.
 
 ## Performance
 
-`?perf` readout: fps, frame time p50/p95/max, DOM nodes, SSE batches/s. Measurements: [`docs/perf.md`](../docs/perf.md).
+`?perf` readout: fps, frame time p50/p95/max, draw calls, triangles and live particle count, DOM nodes, SSE batches/s. Measurements: [`docs/perf.md`](../docs/perf.md).
 
 ## Tiers
 

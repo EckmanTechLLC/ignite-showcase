@@ -3,11 +3,11 @@
   --accent: #22d3ee;
   --feed-a: #22d3ee;
   --feed-b: #c084fc;
-  --hud-h: 100px;
+  --hud-h: 64px;
 }
 
 body { background: radial-gradient(ellipse at 50% 40%, var(--bg-1), var(--bg-0) 70%); }
-.stage { position: fixed; left: 0; right: 56px; /* leaves the overlay dock its own column */ bottom: 0; top: var(--hud-h); }
+.stage { position: fixed; left: 0; right: 56px; /* leaves the overlay dock its own column */ bottom: 0; top: 0; }
 
 @media (prefers-reduced-motion: reduce) {
   .stage * { animation: none !important; }

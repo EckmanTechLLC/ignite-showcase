@@ -1,39 +1,30 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import PueGauge from './PueGauge.vue';
+import PueRing from './PueRing.vue';
+import Legend from './Legend.vue';
+import SelectionCard from './SelectionCard.vue';
 import { heatColor } from '../heat';
 import { num } from '../fmt';
 import { hasCritical } from '../overlays/alarms/store';
-import { panel } from '../overlays/ui';
-import { connection, dataAgeS, historyHealth, tagCount, trialText } from '../live/store';
-import { useTagNumber, useTagString } from '../live/store';
+import { TIER_LABEL, method, tier, user } from '../overlays/identity/auth';
+import { panel, togglePanel } from '../overlays/ui';
+import { connection, dataAgeS, historyHealth, tagCount, trialText, useTagNumber, useTagString } from '../live/store';
+import { PRESETS, activePreset, presetRequest } from '../hall3d/presets';
 
 defineProps<{ legend: boolean }>();
 defineEmits<{ 'update:legend': [value: boolean] }>();
 
 const it = useTagNumber('Hall/ITLoadKW');
 const total = useTagNumber('Hall/TotalFacilityKW');
-const cooling = useTagNumber('Hall/CoolingKW');
-const losses = useTagNumber('Hall/LossesKW');
 const cap = useTagNumber('Hall/CapacityKW');
-const headroom = useTagNumber('Hall/HeadroomPct');
-const outT = useTagNumber('Hall/OutdoorTempC');
-const outH = useTagNumber('Hall/OutdoorHumidityPct');
 const maxIn = useTagNumber('Hall/HallMaxInletC');
-const avgIn = useTagNumber('Hall/HallAvgInletC');
 const alarms = useTagNumber('Hall/ActiveAlarms');
 const mode = useTagString('Hall/Mode');
 const scenario = useTagString('_Sim_/Scenario');
 const speed = useTagNumber('_Sim_/SpeedFactor');
 const profile = useTagString('_Sim_/WorkloadProfile');
 
-const MODE_TONE: Record<string, string> = {
-  NORMAL: 'ok',
-  ON_BATTERY: 'warn',
-  ON_GENERATOR: 'info',
-  THERMAL_EVENT: 'alarm',
-  MIGRATION: 'violet',
-};
+const MODE_TONE: Record<string, string> = { NORMAL: 'ok', ON_BATTERY: 'warn', ON_GENERATOR: 'info', THERMAL_EVENT: 'alarm', MIGRATION: 'violet' };
 const modeTone = computed(() => MODE_TONE[mode.value] ?? 'off');
 const itFrac = computed(() => (cap.value > 0 ? Math.min(1, it.value / cap.value) : 0));
 const pretty = (s: string) => (s ? s.replace(/_/g, ' ').toUpperCase() : '—');
@@ -45,147 +36,112 @@ const linkLabel = computed(() => {
 });
 const linkTone = computed(() => (connection.value === 'open' && dataAgeS.value <= 10 ? 'ok' : connection.value === 'closed' ? 'alarm' : 'warn'));
 const age = computed(() => (Number.isFinite(dataAgeS.value) ? (dataAgeS.value < 10 ? dataAgeS.value.toFixed(1) : Math.round(dataAgeS.value).toString()) + ' s' : '—'));
+const who = computed(() => (user.value ? `${TIER_LABEL[tier.value]} · ${user.value}` : TIER_LABEL[tier.value]));
 </script>
 
 <template>
   <header class="hud mono" :class="`mode-${modeTone}`">
-    <div class="brand">
-      <svg viewBox="0 0 24 24" class="logo" aria-hidden="true"><rect x="3" y="3" width="18" height="5" rx="1" /><rect x="3" y="10" width="18" height="5" rx="1" /><rect x="3" y="17" width="18" height="4" rx="1" /></svg>
-      <div>
+    <div class="strip tl">
+      <div class="brand">
         <div class="title">Data Center</div>
-        <div class="sub">Hall 1 &middot; Ignite showcase</div>
+        <div class="sub">Hall 1</div>
+      </div>
+      <PueRing />
+      <div class="kw">
+        <div class="k">IT</div>
+        <div class="v">{{ num(it, 0) }}<span class="u"> kW</span></div>
+        <div class="meter" :title="`${num(it, 0)} of ${num(cap, 0)} kW design`"><i :style="{ transform: `scaleX(${itFrac})` }" /></div>
+      </div>
+      <div class="kw">
+        <div class="k">FACILITY</div>
+        <div class="v">{{ num(total, 0) }}<span class="u"> kW</span></div>
       </div>
     </div>
 
-    <div class="tile">
-      <div class="k">IT LOAD</div>
-      <div class="v">{{ num(it, 0) }}<span class="u"> kW</span></div>
-      <div class="meter"><i :style="{ transform: `scaleX(${itFrac})` }" /></div>
-      <div class="s">of {{ num(cap, 0) }} kW design</div>
-    </div>
-    <div class="tile">
-      <div class="k">FACILITY</div>
-      <div class="v">{{ num(total, 0) }}<span class="u"> kW</span></div>
-      <div class="s">cooling {{ num(cooling, 0) }} &middot; losses {{ num(losses, 0) }}</div>
-    </div>
-    <div class="tile gauge-tile">
-      <div class="k">PUE <span class="thr">alarm 1.6</span></div>
-      <PueGauge />
-    </div>
-    <div class="tile">
-      <div class="k">HEADROOM</div>
-      <div class="v">{{ num(headroom, 0) }}<span class="u"> %</span></div>
-      <div class="s">capacity left</div>
-    </div>
-    <div class="tile">
-      <div class="k">OUTDOOR</div>
-      <div class="v">{{ num(outT, 1) }}<span class="u"> &deg;C</span></div>
-      <div class="s">{{ num(outH, 0) }} % RH</div>
-    </div>
-    <div class="tile">
-      <div class="k">HALL MAX INLET</div>
-      <div class="v"><i class="swatch" :style="{ background: heatColor(maxIn) }" />{{ num(maxIn, 1) }}<span class="u"> &deg;C</span></div>
-      <div class="s">avg {{ num(avgIn, 1) }} &deg;C</div>
-    </div>
-    <button class="tile alarms" :class="{ crit: hasCritical }" title="Alarm board (A)" @click="panel = panel === 'alarms' ? null : 'alarms'">
-      <div class="k">ALARMS</div>
-      <div class="v" :class="{ hot: alarms > 0 }">{{ num(alarms, 0) }}</div>
-      <div class="s">{{ hasCritical ? 'CRITICAL' : 'active' }}</div>
-    </button>
-
-    <div class="spacer" />
-
-    <div class="tile mode">
-      <div class="k">HALL MODE</div>
-      <div class="badge" :class="[modeTone, { pulse: modeTone === 'alarm' || modeTone === 'warn' }]">{{ pretty(mode) }}</div>
-      <div class="chips">
-        <span class="chip" title="Sim scenario">{{ pretty(scenario) }}</span>
-        <span class="chip" title="Sim speed factor">{{ num(speed, 2).replace(/\.?0+$/, '') }}&times;</span>
-        <span class="chip" title="Workload profile">{{ pretty(profile) }}</span>
-      </div>
+    <div class="strip tr">
+      <span class="badge" :class="[modeTone, { pulse: modeTone === 'alarm' || modeTone === 'warn' }]" title="Hall mode">{{ pretty(mode) }}</span>
+      <span class="chip" title="Sim scenario">{{ pretty(scenario) }}</span>
+      <span class="chip" title="Sim speed factor">{{ num(speed, 2).replace(/\.?0+$/, '') }}&times;</span>
+      <span class="chip prof" title="Workload profile">{{ pretty(profile) }}</span>
+      <i class="sep" />
+      <button class="chip btn alarms" :class="{ crit: hasCritical, hot: alarms > 0 }" title="Alarm board (A)" @click="togglePanel('alarms')">
+        <span class="lab">ALARMS</span> {{ num(alarms, 0) }}
+      </button>
+      <span class="chip" title="Hall max inlet temperature"><i class="swatch" :style="{ background: heatColor(maxIn) }" />MAX IN {{ num(maxIn, 1) }}&deg;</span>
+      <span class="chip link" :title="historyHealth === 'unavailable' ? 'Trial expired — history/alarms paused' : trialText">
+        <i class="dot" :class="linkTone" /><b>{{ linkLabel }}</b>
+        <span class="lab">{{ tagCount ? `live · ${tagCount} tags · ` : '' }}{{ age }}</span>
+      </span>
+      <span v-if="historyHealth === 'unavailable'" class="chip note" role="status">Trial expired &mdash; history/alarms paused</span>
+      <button class="chip btn" :title="method === 'web' ? `Gateway session: ${user}` : 'Identity (L)'" @click="panel = 'identity'">{{ who }}</button>
+      <button class="chip btn toggle" :class="{ on: legend }" :aria-pressed="legend" @click="$emit('update:legend', !legend)">LEGEND</button>
     </div>
 
-    <div class="tile link" :title="historyHealth === 'unavailable' ? 'Trial expired \u2014 history/alarms paused' : trialText">
-      <div class="k">SSE LINK</div>
-      <div class="linkrow"><i class="dot" :class="linkTone" /><b>{{ linkLabel }}</b></div>
-      <div class="s">{{ tagCount ? `live \u00b7 ${tagCount} tags \u00b7 ` : '' }}{{ age }}</div>
-      <div v-if="historyHealth === 'unavailable'" class="s note" role="status">Trial expired &mdash; history/alarms paused</div>
+    <div class="strip bl">
+      <SelectionCard />
+      <Legend v-if="legend" />
     </div>
 
-    <button class="toggle" :class="{ on: legend }" :aria-pressed="legend" @click="$emit('update:legend', !legend)">LEGEND</button>
+    <nav class="strip cam" aria-label="Camera presets">
+      <button v-for="(p, i) in PRESETS" :key="p.key" class="chip btn" :class="{ on: activePreset === i }" :aria-pressed="activePreset === i" :title="`${p.name} (${p.key})`" @click="presetRequest = { i }">
+        <b>{{ p.key }}</b> {{ p.name }}
+      </button>
+      <button class="chip btn" title="Reset camera (R)" @click="presetRequest = { i: 0 }"><b>R</b> Reset</button>
+    </nav>
   </header>
 </template>
 
 <style scoped>
-.hud {
-  position: fixed; left: 0; right: 0; top: 0; height: var(--hud-h); z-index: 10;
-  display: flex; align-items: stretch; gap: var(--space-4);
-  padding: 0 var(--space-4);
-  background: linear-gradient(to bottom, var(--bg-1), color-mix(in srgb, var(--bg-0) 92%, transparent));
-  border-bottom: 2px solid var(--line);
-  transition: border-color var(--dur-slow);
-  color: var(--fg-1); font-size: var(--text-sm);
-}
-.hud.mode-ok { border-bottom-color: color-mix(in srgb, var(--accent) 55%, var(--line)); }
-.hud.mode-warn { border-bottom-color: var(--warn); }
-.hud.mode-info { border-bottom-color: var(--info); }
-.hud.mode-alarm { border-bottom-color: var(--alarm); }
-.hud.mode-violet { border-bottom-color: var(--feed-b); }
-.brand { display: flex; align-items: center; gap: var(--space-3); padding-right: var(--space-4); border-right: 1px solid var(--line); }
-.logo { width: 30px; height: 30px; fill: none; stroke: var(--accent); stroke-width: 1.6; }
-.title { color: var(--accent); font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; font-size: var(--text-md); line-height: 1.1; }
+.hud { position: fixed; inset: 0; z-index: 10; pointer-events: none; color: var(--fg-1); font-size: var(--text-sm); }
+.strip { position: absolute; display: flex; align-items: center; gap: var(--space-3); pointer-events: auto; }
+.tl { left: var(--space-3); top: var(--space-2); padding: 4px var(--space-4) 4px var(--space-3); background: linear-gradient(to right, color-mix(in srgb, var(--bg-1) 92%, transparent), color-mix(in srgb, var(--bg-1) 55%, transparent)); border: 1px solid var(--line); border-radius: var(--radius-3); backdrop-filter: blur(6px); }
+.hud.mode-ok .tl { border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); }
+.hud.mode-warn .tl { border-color: var(--warn); }
+.hud.mode-info .tl { border-color: var(--info); }
+.hud.mode-alarm .tl { border-color: var(--alarm); }
+.hud.mode-violet .tl { border-color: var(--feed-b); }
+.tr { right: 62px; top: var(--space-2); flex-wrap: wrap; justify-content: flex-end; gap: 6px; max-width: calc(100vw - 510px); min-width: 0; padding: 4px 0; }
+.bl { left: var(--space-3); bottom: var(--space-3); flex-direction: column; align-items: flex-start; }
+.cam { left: 50%; bottom: var(--space-3); transform: translateX(-50%); gap: 6px; }
+.brand { padding-right: var(--space-3); border-right: 1px solid var(--line); }
+.title { color: var(--accent); font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; font-size: var(--text-md); line-height: 1.1; white-space: nowrap; }
 .sub { color: var(--fg-2); font-size: var(--text-xs); letter-spacing: 0.04em; }
-.tile { display: flex; flex-direction: column; justify-content: center; gap: 2px; min-width: 96px; }
-.tile.alarms { background: none; border: 0; padding: 0; font: inherit; text-align: left; cursor: pointer; min-width: 80px; }
-.tile.alarms.crit .v, .tile.alarms.crit .s { color: var(--alarm); animation: pulse 1s ease-in-out infinite; font-weight: 700; }
+.kw { min-width: 78px; }
 .k { color: var(--fg-2); font-size: var(--text-xs); letter-spacing: 0.1em; }
-.k .thr { color: var(--alarm); margin-left: 4px; letter-spacing: 0.04em; }
-.v { color: var(--fg-0); font-size: var(--text-xl); font-weight: 600; line-height: 1.05; white-space: nowrap; }
-.v .u { color: var(--fg-2); font-size: var(--text-sm); font-weight: 400; }
-.v.hot { color: var(--alarm); }
-.s { color: var(--fg-2); font-size: var(--text-xs); white-space: nowrap; }
-.s.note { color: var(--warn); }
-.meter { height: 4px; border-radius: 2px; background: var(--bg-3); overflow: hidden; }
+.v { color: var(--fg-0); font-size: var(--text-lg); font-weight: 600; line-height: 1.1; white-space: nowrap; }
+.v .u { color: var(--fg-2); font-size: var(--text-xs); font-weight: 400; }
+.meter { height: 3px; margin-top: 2px; border-radius: 2px; background: var(--bg-3); overflow: hidden; }
 .meter i { display: block; height: 100%; background: var(--accent); transform-origin: left; transition: transform var(--dur-slow) var(--ease-out); }
-.swatch { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 8px; vertical-align: 1px; transition: background var(--dur-scene) linear; }
-.gauge-tile { min-width: 150px; justify-content: flex-start; padding-top: 6px; }
-.gauge-tile .k { margin-bottom: -4px; }
-.spacer { flex: 1; }
-.mode { min-width: 230px; gap: 5px; }
-.badge { align-self: flex-start; padding: 2px 12px; border-radius: var(--radius-2); font-weight: 700; letter-spacing: 0.08em; font-size: var(--text-md); border: 1px solid currentColor; }
-.badge.ok { color: var(--ok); background: color-mix(in srgb, var(--ok) 14%, transparent); }
-.badge.warn { color: var(--warn); background: color-mix(in srgb, var(--warn) 16%, transparent); }
-.badge.info { color: var(--info); background: color-mix(in srgb, var(--info) 16%, transparent); }
-.badge.alarm { color: var(--alarm); background: color-mix(in srgb, var(--alarm) 16%, transparent); }
-.badge.violet { color: var(--feed-b); background: color-mix(in srgb, var(--feed-b) 16%, transparent); }
-.badge.off { color: var(--fg-2); }
-.badge.pulse { animation: pulse 1.4s ease-in-out infinite; }
-@keyframes pulse { 50% { opacity: 0.55; } }
-.chips { display: flex; gap: 6px; }
-.chip { padding: 1px 7px; border-radius: 10px; background: var(--bg-3); color: var(--fg-1); font-size: var(--text-xs); letter-spacing: 0.04em; white-space: nowrap; }
-.link { min-width: 150px; }
-.linkrow { display: flex; align-items: center; gap: var(--space-2); color: var(--fg-0); letter-spacing: 0.06em; }
-.dot { width: 9px; height: 9px; border-radius: 50%; background: var(--fg-2); }
+.chip { display: inline-flex; align-items: center; gap: 6px; padding: 3px 9px; border-radius: 12px; background: color-mix(in srgb, var(--bg-2) 88%, transparent); border: 1px solid var(--line); color: var(--fg-1); font: 500 var(--text-xs) var(--font-mono); letter-spacing: 0.04em; white-space: nowrap; backdrop-filter: blur(6px); }
+.chip .lab { color: var(--fg-2); }
+.chip.btn { cursor: pointer; }
+.chip.btn:hover { background: var(--bg-3); }
+.chip.btn b { color: var(--accent); }
+.chip.on, .chip.toggle.on { color: var(--accent); border-color: var(--accent); }
+.chip.alarms.hot { color: var(--alarm); border-color: var(--alarm); }
+.chip.alarms.hot .lab { color: var(--alarm); }
+.chip.alarms.crit { animation: pulse 1s ease-in-out infinite; font-weight: 700; }
+.chip.note { color: var(--warn); border-color: var(--warn); white-space: normal; }
+.chip.link b { color: var(--fg-0); letter-spacing: 0.06em; }
+.swatch { display: inline-block; width: 10px; height: 10px; border-radius: 3px; transition: background var(--dur-scene) linear; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--fg-2); }
 .dot.ok { background: var(--ok); box-shadow: 0 0 8px var(--ok); }
 .dot.warn { background: var(--warn); }
 .dot.alarm { background: var(--alarm); }
-.toggle { align-self: center; font: 600 var(--text-xs) var(--font-mono); letter-spacing: 0.1em; color: var(--fg-1); background: var(--bg-2); border: 1px solid var(--line-strong); border-radius: var(--radius-2); padding: 6px 12px; cursor: pointer; }
-.toggle.on { color: var(--accent); border-color: var(--accent); }
-.toggle:hover { background: var(--bg-3); }
+.sep { width: 1px; height: 16px; background: var(--line-strong); margin: 0 2px; }
+.badge { padding: 2px 11px; border-radius: var(--radius-2); font-weight: 700; letter-spacing: 0.08em; font-size: var(--text-sm); border: 1px solid currentColor; backdrop-filter: blur(6px); }
+.badge.ok { color: var(--ok); background: color-mix(in srgb, var(--ok) 14%, var(--bg-1)); }
+.badge.warn { color: var(--warn); background: color-mix(in srgb, var(--warn) 16%, var(--bg-1)); }
+.badge.info { color: var(--info); background: color-mix(in srgb, var(--info) 16%, var(--bg-1)); }
+.badge.alarm { color: var(--alarm); background: color-mix(in srgb, var(--alarm) 16%, var(--bg-1)); }
+.badge.violet { color: var(--feed-b); background: color-mix(in srgb, var(--feed-b) 16%, var(--bg-1)); }
+.badge.off { color: var(--fg-2); background: var(--bg-1); }
+.badge.pulse { animation: pulse 1.4s ease-in-out infinite; }
+@keyframes pulse { 50% { opacity: 0.55; } }
 @media (max-width: 1500px) {
-  .hud { gap: var(--space-3); padding: 0 var(--space-3); }
-  .brand { padding-right: var(--space-3); gap: var(--space-2); }
-  .brand .sub, .logo { display: none; }
-  .title { white-space: nowrap; font-size: var(--text-sm); }
-  .tile, .mode, .link { min-width: 0; }
-  .gauge-tile { min-width: 112px; }
-  .spacer { flex: 0 0 0; }
-  .v { font-size: var(--text-lg); }
-  .v .u { font-size: var(--text-xs); }
-  .chips { gap: 4px; }
-  .chip { padding: 1px 5px; }
-  .badge { font-size: var(--text-sm); padding: 2px 8px; }
-  .toggle { padding: 6px 8px; }
-  .s.note { white-space: normal; max-width: 150px; }
+  .chip.prof { display: none; }
+  .tr { max-width: calc(100vw - 500px); }
+  .brand .sub { display: none; }
+  .chip { padding: 2px 7px; }
 }
 </style>

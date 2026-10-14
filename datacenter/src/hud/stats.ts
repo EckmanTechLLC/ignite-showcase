@@ -1,6 +1,6 @@
 import { computed } from 'vue';
 import { tagRef } from '../live/store';
-import { ROWS, rackId } from '../layout';
+import { ROW_NAMES, rackId } from '../hall3d/geometry';
 
 const numOf = (name: string) => {
   const v = tagRef(name).value;
@@ -17,8 +17,8 @@ function over(r: number, tag: string): number[] {
 }
 const avg = (a: number[]) => (a.length ? a.reduce((s, v) => s + v, 0) / a.length : Number.NaN);
 
-/** Per-row aggregates over the ten racks of each row (reactive through the tag refs). */
-export const rowStats = ROWS.map((_, r) => ({
+/** Per-row aggregates over the ten racks of each row (reactive through the tag refs; only read while the legend is open). */
+export const rowStats = ROW_NAMES.map((_, r) => ({
   inletAvg: computed(() => avg(over(r, 'InletTempC'))),
   inletMax: computed(() => (over(r, 'InletTempC').length ? Math.max(...over(r, 'InletTempC')) : Number.NaN)),
   outletAvg: computed(() => avg(over(r, 'OutletTempC'))),

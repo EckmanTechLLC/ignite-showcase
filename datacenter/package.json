@@ -13,10 +13,14 @@
   "dependencies": {
     "@ignite/client": "*",
     "@ignite/theme": "*",
+    "@tresjs/cientos": "5.9.3",
+    "@tresjs/core": "5.9.3",
     "echarts": "6.1.0",
+    "three": "0.186.1",
     "vue": "3.5.43"
   },
   "devDependencies": {
+    "@types/three": "0.186.0",
     "@vitejs/plugin-vue": "6.0.10",
     "typescript": "5.9.3",
     "vite": "8.3.4",
