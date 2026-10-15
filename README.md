@@ -59,6 +59,10 @@ Copy `.env.example` in a demo folder to `.env.development.local` (git-ignored; `
 
 Architecture and decisions: [ADR-005](https://github.com/EckmanTechLLC/ignite/blob/main/docs/decisions/adr-005-showcase-program.md).
 
+## Status
+
+The demos run against a lab Ignition gateway on a trial licence. Headless performance numbers are software-rendered, so they understate real GPU hardware (`docs/perf.md` explains). The `deploy` branch is build output: it is never force-pushed, but its history is noisy. There is no CI yet.
+
 ## License
 
 MIT. Third-party assets: see `docs/ASSETS.md`.
