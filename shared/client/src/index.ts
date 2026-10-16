@@ -18,6 +18,7 @@ export {
   type ConnectionState,
   type TagUpdate,
   SNAPSHOT_TIMEOUT_MS,
+  REGISTER_URL_LIMIT,
   type BatchInfo,
   type SubscribeOptions,
   type Subscription,

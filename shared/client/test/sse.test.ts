@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { configureEnv } from '../src/env.js';
 import { setToken } from '../src/http.js';
-import { backoffDelay, SNAPSHOT_TIMEOUT_MS, subscribe, type ConnectionState } from '../src/sse.js';
+import { backoffDelay, REGISTER_URL_LIMIT, SNAPSHOT_TIMEOUT_MS, sseUrl, subscribe, type ConnectionState } from '../src/sse.js';
 import { FakeEventSource, MemoryStorage } from './helpers.js';
 
 const ev = (path: string, value: unknown) => ({ type: 'tagChange', path, value, quality: 'Good', timestamp: 't' });
@@ -184,5 +184,149 @@ describe('sse', () => {
     expect(onBatch).toHaveBeenCalledTimes(1);
     expect(onSubscribed).not.toHaveBeenCalled();
     s.close();
+  });
+
+  describe('registered subscriptions', () => {
+    const longPaths = () => Array.from({ length: 400 }, (_, i) => `[default]CR/Rooms/R${i}/DP_1/Value`);
+    const reg = (id = 'sub-1', status = 200, body: unknown = { id, count: 400, expiresInMs: 60_000 }) =>
+      vi.fn(async () => new Response(JSON.stringify(body), { status }));
+    const flush = async () => {
+      for (let i = 0; i < 5; i++) await vi.advanceTimersByTimeAsync(0);
+    };
+
+    it('keeps short lists on the plain URL (no POST)', () => {
+      const fetchFn = reg();
+      vi.stubGlobal('fetch', fetchFn);
+      const s = subscribe(['[default]CR/Rooms/*/DP_1/Value'], () => {});
+      expect(fetchFn).not.toHaveBeenCalled();
+      expect(new URL(FakeEventSource.instances[0].url).searchParams.get('paths')).toBe('[default]CR/Rooms/*/DP_1/Value');
+      s.close();
+    });
+
+    it('sseUrl accepts {subscription}', () => {
+      const u = new URL(sseUrl({ subscription: 'abc' }));
+      expect(u.searchParams.get('subscription')).toBe('abc');
+      expect(u.searchParams.get('paths')).toBeNull();
+      expect(u.searchParams.get('apiKey')).toBe('K123');
+    });
+
+    it('registers by POST when the URL would exceed the limit, then streams by id', async () => {
+      const paths = longPaths();
+      expect(sseUrl(paths).length).toBeGreaterThan(REGISTER_URL_LIMIT);
+      const fetchFn = reg();
+      vi.stubGlobal('fetch', fetchFn);
+      const s = subscribe(paths, () => {});
+      expect(FakeEventSource.instances).toHaveLength(0);
+      await flush();
+      expect(fetchFn).toHaveBeenCalledTimes(1);
+      const [url, init] = fetchFn.mock.calls[0] as unknown as [string, RequestInit];
+      expect(url).toBe('https://gw.example/data/ignite/sse/subscriptions');
+      expect(init.method).toBe('POST');
+      expect(JSON.parse(String(init.body))).toEqual({ paths, alarms: false, path: null });
+      expect((init.headers as Record<string, string>)['X-Ignite-Key']).toBe('K123');
+      expect(FakeEventSource.instances).toHaveLength(1);
+      const u = new URL(FakeEventSource.instances[0].url);
+      expect(u.searchParams.get('subscription')).toBe('sub-1');
+      expect(u.searchParams.get('paths')).toBeNull();
+      s.close();
+    });
+
+    it('register: true forces registration for a short list', async () => {
+      const fetchFn = reg();
+      vi.stubGlobal('fetch', fetchFn);
+      const s = subscribe(['[default]A'], () => {}, { register: true });
+      await flush();
+      expect(fetchFn).toHaveBeenCalledTimes(1);
+      expect(new URL(FakeEventSource.instances[0].url).searchParams.get('subscription')).toBe('sub-1');
+      s.close();
+    });
+
+    it('re-registers when the id expired before a reconnect', async () => {
+      let n = 0;
+      const fetchFn = vi.fn(async () => new Response(JSON.stringify({ id: `sub-${++n}`, count: 1, expiresInMs: 60_000 }), { status: 200 }));
+      vi.stubGlobal('fetch', fetchFn);
+      const s = subscribe(['[default]A'], () => {}, { register: true, maxConnectionMs: 120_000 });
+      await flush();
+      FakeEventSource.instances[0].open();
+      await vi.advanceTimersByTimeAsync(120_000); // proactive reconnect after the id's lifetime
+      expect(fetchFn).toHaveBeenCalledTimes(2);
+      const last = FakeEventSource.instances.at(-1)!;
+      expect(new URL(last.url).searchParams.get('subscription')).toBe('sub-2');
+      s.close();
+    });
+
+    it('re-registers without backoff when the server answers 404 for a stale id', async () => {
+      let n = 0;
+      const fetchFn = vi.fn(async (url: string, init?: RequestInit) => {
+        if (init?.method === 'POST') return new Response(JSON.stringify({ id: `sub-${++n}`, expiresInMs: 60_000 }), { status: 200 });
+        return new Response('{"error":"subscription not found or expired"}', { status: 404 }); // the probe GET
+      });
+      vi.stubGlobal('fetch', fetchFn);
+      const s = subscribe(['[default]A'], () => {}, { register: true });
+      await flush();
+      FakeEventSource.instances[0].fail();
+      await flush();
+      const posts = fetchFn.mock.calls.filter((c) => (c[1] as RequestInit | undefined)?.method === 'POST');
+      expect(posts).toHaveLength(2);
+      expect(FakeEventSource.instances).toHaveLength(2);
+      expect(new URL(FakeEventSource.instances[1].url).searchParams.get('subscription')).toBe('sub-2');
+      s.close();
+    });
+
+    it('keeps the id and backs off when the error is not a stale id', async () => {
+      const fetchFn = vi.fn(async (_url: string, init?: RequestInit) =>
+        init?.method === 'POST'
+          ? new Response(JSON.stringify({ id: 'sub-1', expiresInMs: 60_000 }), { status: 200 })
+          : new Response('{"error":"too many live connections"}', { status: 503 }));
+      vi.stubGlobal('fetch', fetchFn);
+      const s = subscribe(['[default]A'], () => {}, { register: true });
+      await flush();
+      FakeEventSource.instances[0].fail();
+      await flush();
+      expect(FakeEventSource.instances).toHaveLength(1);
+      await vi.advanceTimersByTimeAsync(1_000);
+      expect(FakeEventSource.instances).toHaveLength(2);
+      expect(new URL(FakeEventSource.instances[1].url).searchParams.get('subscription')).toBe('sub-1');
+      s.close();
+    });
+
+    it('surfaces the POST error text through onError and does not retry a 400', async () => {
+      const fetchFn = vi.fn(async () => new Response('{"error":"too many tags in subscription (limit 1000)"}', { status: 400 }));
+      vi.stubGlobal('fetch', fetchFn);
+      const onError = vi.fn();
+      const states: ConnectionState[] = [];
+      const s = subscribe(longPaths(), () => {}, { onError, onState: (st) => states.push(st) });
+      await flush();
+      expect(onError).toHaveBeenCalledTimes(1);
+      expect(onError.mock.calls[0][0].status).toBe(400);
+      expect(onError.mock.calls[0][0].body).toBe('too many tags in subscription (limit 1000)');
+      expect(FakeEventSource.instances).toHaveLength(0);
+      await vi.advanceTimersByTimeAsync(60_000);
+      expect(fetchFn).toHaveBeenCalledTimes(1);
+      expect(states.at(-1)).toBe('closed');
+      s.close();
+    });
+
+    it('surfaces a scope 403 and retries a 5xx with backoff', async () => {
+      const fetchFn = vi
+        .fn()
+        .mockResolvedValueOnce(new Response('{"error":"tag path not permitted"}', { status: 403 }));
+      vi.stubGlobal('fetch', fetchFn);
+      const onError = vi.fn();
+      const s = subscribe(['[default]A'], () => {}, { register: true, onError });
+      await flush();
+      expect(onError.mock.calls[0][0].body).toBe('tag path not permitted');
+      s.close();
+
+      const fail503 = vi.fn(async () => new Response('{"error":"busy"}', { status: 503 }));
+      vi.stubGlobal('fetch', fail503);
+      const onError2 = vi.fn();
+      const s2 = subscribe(['[default]A'], () => {}, { register: true, onError: onError2 });
+      await flush();
+      await vi.advanceTimersByTimeAsync(1_000);
+      expect(fail503).toHaveBeenCalledTimes(2);
+      expect(onError2).toHaveBeenCalledTimes(2);
+      s2.close();
+    });
   });
 });
