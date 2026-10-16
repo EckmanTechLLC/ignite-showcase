@@ -39,3 +39,4 @@ export * from './api/scripts.js';
 export * from './api/db.js';
 export * from './api/audit.js';
 export * from './api/auth.js';
+export * from './api/signature.js';

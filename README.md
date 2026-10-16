@@ -8,7 +8,7 @@ Each demo is a single full-viewport control-room screen on a different front-end
 
 | Path | What |
 |---|---|
-| `shared/client/` | `@ignite/client` — TypeScript, zero runtime dependencies: env bootstrap, REST wrappers, SSE (folder subscriptions, initial snapshot, per-frame batching, reconnect), `systemStatus()` / `probeHealth()` licence and trial probe (`GET /system/status`; an optional history probe is the fallback for modules without the route) |
+| `shared/client/` | `@ignite/client` — TypeScript, zero runtime dependencies: env bootstrap, REST wrappers, SSE (folder subscriptions, initial snapshot, per-frame batching, reconnect), `systemStatus()` / `probeHealth()` licence and trial probe (`GET /system/status`; an optional history probe is the fallback for modules without the route); 0.2.0 adds optional `{signature, reason}` options on `writeTags`, `acknowledgeAlarm` and `callLibrary` (21 CFR Part 11 e-signatures, ADR-006) with `SignatureRequiredError` / `SignatureRejectedError` |
 | `shared/theme/` | CSS tokens, motion rules and bundled fonts (Inter, JetBrains Mono) |
 | `launch/` | Demo 1 — Launch Operations: React 18, Vite, React Three Fiber, ECharts |
 | `datacenter/` | Demo 2 — Data Center: Vue 3, Vite, TresJS 3D data hall (60 racks, CRAH airflow particles, live power path) |

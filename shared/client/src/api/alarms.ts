@@ -1,4 +1,5 @@
 import { buildUrl, fetchJson, postJson, type Params } from '../http.js';
+import { mapSignatureError, signFields, type SignOptions } from './signature.js';
 
 export interface Alarm {
   id: string | null;
@@ -38,6 +39,9 @@ export function getAlarmHistory(
   return fetchJson(buildUrl('/alarms/history', filters));
 }
 
-export function acknowledgeAlarm(id: string): Promise<{ acknowledged: number }> {
-  return postJson(buildUrl('/alarms/acknowledge'), { id });
+export function acknowledgeAlarm(id: string, opts?: SignOptions): Promise<{ acknowledged: number }> {
+  const body = opts ? { id, ...signFields(opts) } : { id };
+  return postJson<{ acknowledged: number }>(buildUrl('/alarms/acknowledge'), body).catch((e) => {
+    throw mapSignatureError(e, !!opts?.signature);
+  });
 }

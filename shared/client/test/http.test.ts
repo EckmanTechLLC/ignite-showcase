@@ -121,7 +121,7 @@ describe('wrappers', () => {
 
   it('posts script, named query and audit shapes', async () => {
     const f = mockFetch();
-    await callLibrary('demo', 'launch.resume', [1], { a: 2 });
+    await callLibrary('demo', 'launch.resume', [1], { kwargs: { a: 2 } });
     expect(JSON.parse(lastCall(f).init.body as string)).toEqual({ project: 'demo', path: 'launch.resume', args: [1], kwargs: { a: 2 } });
     await callSystem('system.tag.readBlocking', [['x']]);
     expect(JSON.parse(lastCall(f).init.body as string)).toEqual({ function: 'system.tag.readBlocking', args: [['x']], kwargs: {} });

@@ -1,4 +1,5 @@
 import { buildUrl, fetchJson, postJson } from '../http.js';
+import { mapSignatureError, signFields, type SignOptions } from './signature.js';
 
 export interface TagValue {
   path: string;
@@ -24,8 +25,15 @@ export function readTags(paths: string[]): Promise<{ tags: TagValue[] }> {
   return fetchJson(buildUrl('/tags/read', { paths: paths.join(',') }));
 }
 
-export function writeTags(writes: TagWrite[]): Promise<{ results: { path: string; quality: string }[] }> {
-  return postJson(buildUrl('/tags/write'), writes);
+/** Without `opts` the body is the bare array (unchanged); with `opts` it is `{writes, signature?, reason?}`. */
+export function writeTags(
+  writes: TagWrite[],
+  opts?: SignOptions,
+): Promise<{ results: { path: string; quality: string }[] }> {
+  const body = opts ? { writes, ...signFields(opts) } : writes;
+  return postJson<{ results: { path: string; quality: string }[] }>(buildUrl('/tags/write'), body).catch((e) => {
+    throw mapSignatureError(e, !!opts?.signature);
+  });
 }
 
 export function browseTags(path = ''): Promise<{ path: string; children: BrowseNode[]; count: number }> {
